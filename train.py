@@ -168,7 +168,7 @@ def train_model(
             train_loader.sampler.set_epoch(epoch)
 
         # Train for one epoch
-        model, train_stats = train_one_epoch(
+        model, _ = train_one_epoch(
             model, 
             train_loader, 
             optimizer, 
@@ -212,12 +212,12 @@ def train_model(
             dist.barrier()
         torch.cuda.empty_cache()
 
-    # Log total training time
-    total_time = time.time() - start_time
-    total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-    print(f'Training time: {total_time_str}')
-  
-    return train_stats
+        # Log total training time
+        total_time = time.time() - start_time
+        total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+        print(f'Training time: {total_time_str}')
+    
+    return model_without_ddp
 
 def load_model_from_checkpoint(model, args):
     import re

@@ -77,7 +77,7 @@ def run_pipeline(args):
     lr_scheduler, _ = create_scheduler(args, optimizer)
     print("Start training")
 
-    model_without_ddp, train_stats = train_model(
+    model_without_ddp = train_model(
         train_loader, 
         model, 
         optimizer, 
