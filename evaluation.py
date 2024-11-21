@@ -137,6 +137,7 @@ def run_eval(train_loader, model, tokenizer, args):
         print('load checkpoint from %s' % args.checkpoint)
 
     if args.check_samples_tau:
+        print("***\nstarting pre training evaluation\n***")
         image_tau_array = []
         text_tau_array = []
 
@@ -145,7 +146,7 @@ def run_eval(train_loader, model, tokenizer, args):
         with torch.no_grad():
             for image, text, idx, text_idx in tqdm(train_loader):
                 image = image.to(args.device)
-                text = tokenizer(text, padding='max_length', truncation=True, max_length=30, return_tensors="pt").to(device)
+                text = tokenizer(text, padding='max_length', truncation=True, max_length=30, return_tensors="pt").to(args.device)
 
                 image_feat = F.normalize(model.vision_proj(model.visual_encoder(image)), dim=-1)
                 text_output = model.text_encoder(text.input_ids, attention_mask=text.attention_mask, output_hidden_states=False)
