@@ -6,11 +6,11 @@ from scheduler import create_scheduler
 from optim import create_optimizer
 import torch
 from zero_shot_helpers import create_zeroshot_dataloader
-from prepare_data import prepare_data_loaders
+from prepare_data import prepare_data_loaders, manage_paths_and_environment
 import utils
 from utils import warn, set_random, set_path
 from train import train_model, extract_and_save_sample_tau, load_model_from_checkpoint
-from evaluation import evaluate_model
+from evaluation import evaluate_model, get_objective_value
 
 warnings.warn = warn
 #%% 
@@ -23,6 +23,7 @@ def run_pipeline(args):
     seed = args.seed + utils.get_rank()
     set_random(seed)    
     #### Dataset #### 
+    args = manage_paths_and_environment(args)
     print("***\nCreating retrieval dataset\n***")
     train_loader, val_loader = prepare_data_loaders(args)
     if args.text_encoder == 'roberta-large':
@@ -104,7 +105,7 @@ def run_pipeline(args):
             val_result, 
             zeroshot_results
         )
-        print("objective value: {objective_value}")
+        print(f"objective value: {objective_value}")
     return 
 
 if __name__ == '__main__':
@@ -147,7 +148,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size_test', default=128, type=int)
     parser.add_argument('--k_test', default=256, type=int)
     parser.add_argument('--evaluate', action='store_true')
-    parser.add_argument("--val_frequency", type = int, default=5)
+    parser.add_argument("--val_frequency", type = int, default=2)
     parser.add_argument('--checkpoint', default='', type=str)
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--seed', default=42, type=int)
@@ -201,6 +202,6 @@ if __name__ == '__main__':
         args.evaluate = True
     args = set_path(args)
 
-    train_stats = run_pipeline(args)
+    run_pipeline(args)
 
 

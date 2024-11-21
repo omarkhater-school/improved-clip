@@ -207,7 +207,7 @@ def train_model(
             print(f"\n*** Evaluation at Epoch {epoch + 1} ***\n")
             val_result, zeroshot_results = evaluate_model(val_loader, model_without_ddp, tokenizer, args, zeroshot_dataloader)
             objective_value = get_objective_value(val_result, zeroshot_results)
-            print("objective value: {objective_value}")
+            print(f"objective value: {objective_value}")
         # Save tau values every 10 epochs (if requested)
         if args.store_tau and (epoch + 1) % 10 == 0:
             print("Saving tau values...")
