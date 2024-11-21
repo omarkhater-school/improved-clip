@@ -4,9 +4,13 @@ import os
 import time
 from collections import defaultdict, deque
 import datetime
-
+import torch.backends.cudnn as cudnn
 import torch
 import torch.distributed as dist
+from pathlib import Path
+import json 
+import warnings
+import random
 
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a
@@ -256,3 +260,25 @@ def init_distributed_mode(args):
                                          world_size=args.world_size, rank=args.rank)
     torch.distributed.barrier()
     setup_for_distributed(args.rank == 0)
+
+def warn(*args, **kwargs):
+    pass
+
+def set_random(seed):
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    cudnn.benchmark = True
+    os.environ["TOKENIZERS_PARALLELISM"] = "true"
+
+def set_path(args):
+    args.train_file = os.path.join(args.ann_path, args.train_file)
+    args.train_image_root = os.path.join(args.data_path, args.train_image_root)
+    args.val_coco_file = os.path.join(args.ann_path, 'coco_val.json')
+    args.coco_image_root = os.path.join(args.data_path, 'mscoco_val/mscoco_val2014_subset_5k')
+
+    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+
+    json.dump(args.__dict__, open(os.path.join(args.output_dir, 'args.json'), 'w'), indent=2) 
+
+    return args

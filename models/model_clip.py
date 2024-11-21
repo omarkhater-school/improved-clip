@@ -1,11 +1,8 @@
 from functools import partial
-
 import timm
 from transformers import AutoModel, RobertaModel
-
 from models.losses import CLIP_Loss, CyCLIP_Loss, SogCLR_Loss, VICReg_Loss
 from models.losses import iSogCLR_New_v2_Loss, iSogCLR_New_v1_Loss, onlineCLR_Loss, iSogCLR_New_Loss
-
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -24,6 +21,7 @@ class CLIP(nn.Module):
                  rho_T = 0.1,
                  eta_init = 0.001,
                  tau_init = 0.01,
+                 rho_init = 6.0, 
                  eta_sched = None,
                  eta_exp_gamma = 0.8,
                  beta_u = 0.9,
@@ -71,35 +69,74 @@ class CLIP(nn.Module):
 
         if self.ita_type == 'clip':
             if not personalized_tau:
-                self.criterion = CLIP_Loss(world_size=world_size, personalized_tau=personalized_tau, temperature=self.temp)
+                self.criterion = CLIP_Loss(
+                    world_size=world_size, 
+                    personalized_tau=personalized_tau, 
+                    temperature=self.temp)
             else:
-                self.criterion = CLIP_Loss(world_size=world_size, personalized_tau=personalized_tau, image_tau=self.image_temp, text_tau=self.text_temp)
+                self.criterion = CLIP_Loss(
+                    world_size=world_size, 
+                    personalized_tau=personalized_tau, 
+                    image_tau=self.image_temp, 
+                    text_tau=self.text_temp
+                    )
 
         elif self.ita_type == 'cyclip':
-            self.criterion = CyCLIP_Loss(world_size=world_size, temperature=self.temp)
+            self.criterion = CyCLIP_Loss(
+                world_size=world_size, 
+                temperature=self.temp)
 
         elif self.ita_type == 'vicreg':
-            self.criterion = VICReg_Loss(world_size=world_size, dim_size=embed_dim, sim_coeff=vicreg_sim_coeff, std_coeff=vicreg_std_coeff)
+            self.criterion = VICReg_Loss(
+                world_size=world_size, 
+                dim_size=embed_dim, 
+                sim_coeff=vicreg_sim_coeff, 
+                std_coeff=vicreg_std_coeff
+                )
 
         elif self.ita_type == 'sogclr':
-            # self.criterion = SogCLR_Loss(world_size=world_size, gamma=sogclr_gamma, temperature=self.temp, bsz=bsz, enable_surrogate=enable_surrogate, 
-            #                              surrogate_c=surrogate_c, lamda_rho=lamda_rho, lamda_init=lamda_init)
-            self.criterion = SogCLR_Loss(world_size=world_size, gamma=sogclr_gamma, temperature=self.temp, bsz=bsz)
+            self.criterion = SogCLR_Loss(
+                world_size=world_size, 
+                gamma=sogclr_gamma, 
+                temperature=self.temp, 
+                bsz=bsz
+                )
 
-        # elif self.ita_type == 'sogclr_dro':
-        #     self.criterion = SogCLR_DRO_Loss(world_size=world_size, gamma=sogclr_gamma, rho_init=rho_init, tau_init=tau_init, bsz=bsz,
-        #                                      eta_init=eta_init, beta_u=beta_u, enable_surrogate=enable_surrogate)
         elif self.ita_type == 'isogclr_new_v2':
-            self.criterion = iSogCLR_New_v2_Loss(world_size=world_size, gamma=sogclr_gamma, rho_init=rho_init, tau_init=tau_init, bsz=bsz,
-                                                 eta_init=eta_init, beta_u=beta_u)
+            self.criterion = iSogCLR_New_v2_Loss(
+                world_size=world_size, 
+                gamma=sogclr_gamma, 
+                rho_init=rho_init, 
+                tau_init=tau_init, 
+                bsz=bsz,
+                eta_init=eta_init, 
+                beta_u=beta_u
+                )
         elif self.ita_type == 'isogclr_new_v1':
-            self.criterion = iSogCLR_New_v1_Loss(world_size=world_size, gamma=sogclr_gamma, rho_init=rho_init, bsz=bsz)
+            self.criterion = iSogCLR_New_v1_Loss(
+                world_size=world_size, 
+                gamma=sogclr_gamma, 
+                rho_init=rho_init, 
+                bsz=bsz
+                )
         elif self.ita_type == 'onlineclr':
-            self.criterion = onlineCLR_Loss(world_size=world_size, temperature=self.temp, gamma=sogclr_gamma)
+            self.criterion = onlineCLR_Loss(
+                world_size=world_size, 
+                temperature=self.temp, 
+                gamma=sogclr_gamma
+                )
 
         elif self.ita_type == 'isogclr_new':
-            self.criterion = iSogCLR_New_Loss(world_size=world_size, gamma=sogclr_gamma, rho_I=rho_I, rho_T=rho_T, tau_init=tau_init, bsz=bsz,
-                                              use_temp_net=use_temp_net, feature_dim=embed_dim)
+            self.criterion = iSogCLR_New_Loss(
+                world_size=world_size, 
+                gamma=sogclr_gamma, 
+                rho_I=rho_I, 
+                rho_T=rho_T, 
+                tau_init=tau_init, 
+                bsz=bsz,
+                use_temp_net=use_temp_net, 
+                feature_dim=embed_dim
+                )
         else:
             raise NotImplementedError
 
@@ -117,7 +154,10 @@ class CLIP(nn.Module):
         image_embeds = self.vision_proj(image_embeds)
         image_feat = F.normalize(image_embeds, dim=-1) 
 
-        text_output = self.text_encoder(text.input_ids, attention_mask=text.attention_mask, output_hidden_states=False)
+        text_output = self.text_encoder(
+            text.input_ids, 
+            attention_mask=text.attention_mask, 
+            output_hidden_states=False)
         text_embeds = self.text_proj(text_output.last_hidden_state[:,0,:])
         text_feat = F.normalize(text_embeds, dim=-1)                 
 
