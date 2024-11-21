@@ -159,6 +159,7 @@ def evaluate_model(val_loader, model, tokenizer, args, zeroshot_dataloader=None)
 
     # Optional zero-shot evaluation
     if zeroshot_dataloader:
+        print("starting zeroshot transfer...")
         zeroshot_results = zeroshot_transfer(
             model_without_ddp,
             zeroshot_dataloader,
@@ -186,3 +187,15 @@ def evaluate_model(val_loader, model, tokenizer, args, zeroshot_dataloader=None)
         with open(log_file, "a") as f:
             f.write(json.dumps(log_stats) + "\n")
         print(f"Evaluation results logged to {log_file}")
+
+    return val_result, zeroshot_results
+
+def get_objective_value(val_result, zeroshot_results = None):
+    if zeroshot_results:
+        zero_shot_score = zeroshot_results.get("zeroshot_top1")
+    else:
+        zero_shot_score = 0
+    txt_r1 = val_result.get("txt_r1")
+    img_r1 = val_result.get("img_r1")
+    score = (zero_shot_score + txt_r1 + img_r1) / 3
+    return score

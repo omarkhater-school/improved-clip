@@ -2,7 +2,7 @@ import utils
 import torch
 import os
 import time
-from evaluation import evaluate_model
+from evaluation import evaluate_model, get_objective_value
 import pickle
 import torch.distributed as dist
 import datetime
@@ -185,7 +185,9 @@ def train_model(
         # Evaluate the model at specified intervals
         if (epoch + 1) % args.val_frequency == 0:
             print(f"\n*** Evaluation at Epoch {epoch + 1} ***\n")
-            evaluate_model(val_loader, model_without_ddp, tokenizer, args, zeroshot_dataloader)
+            val_result, zeroshot_results = evaluate_model(val_loader, model_without_ddp, tokenizer, args, zeroshot_dataloader)
+            objective_value = get_objective_value(val_result, zeroshot_results)
+            print("objective value: {objective_value}")
         # Save tau values every 10 epochs (if requested)
         if args.store_tau and (epoch + 1) % 10 == 0:
             print("Saving tau values...")
@@ -212,10 +214,10 @@ def train_model(
             dist.barrier()
         torch.cuda.empty_cache()
 
-        # Log total training time
-        total_time = time.time() - start_time
-        total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-        print(f'Training time: {total_time_str}')
+    # Log total training time
+    total_time = time.time() - start_time
+    total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+    print(f'Training time: {total_time_str}')
     
     return model_without_ddp
 

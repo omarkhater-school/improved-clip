@@ -90,8 +90,8 @@ def run_pipeline(args):
                
     ## Evaluation
     if args.evaluate:
-        evaluate_model(val_loader, model_without_ddp, tokenizer, args, zeroshot_dataloader)
-    return train_stats
+        val_result, zeroshot_results = evaluate_model(val_loader, model_without_ddp, tokenizer, args, zeroshot_dataloader)
+    return 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -186,6 +186,6 @@ if __name__ == '__main__':
         args.evaluate = True
     args = set_path(args)
 
-    train_stats = run_pipeline(args)
+    run_pipeline(args)
 
 
