@@ -43,21 +43,33 @@ def train_one_epoch(
     metric_logger.add_meter('weights_text_pos', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
 
     header = 'Train Epoch: [{}]'.format(epoch)
-    print_freq = 50
-    step_size = 100
+    step_size = args.step_size_per_epoch
     warmup_iterations = warmup_steps*step_size  
-
-    for i,(image, text, idx, text_idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+    progress_bar = tqdm(
+        data_loader, 
+        desc=header, 
+        total=len(data_loader), 
+        leave=True,
+        position=0  # Ensure it overwrites correctly
+    )
+    for i,(image, text, idx, text_idx) in enumerate(progress_bar):
         optimizer.zero_grad()
 
         image = image.to(device, non_blocking=True)   
         idx = idx.to(device, non_blocking=True)
         text_idx = text_idx.to(device, non_blocking=True)   
-        text_input = tokenizer(text, padding='max_length', truncation=True, max_length=30, return_tensors="pt").to(device)
+        text_input = tokenizer(
+            text, 
+            padding='max_length', 
+            truncation=True, 
+            max_length=30, 
+            return_tensors="pt"
+        ).to(device)
         
         # set learning rate for temperature network
         optimizer.param_groups[2]["lr"] = optimizer.param_groups[0]["lr"] / 10.0
 
+        # Compute loss and update model
         if grad_scaler is None:
             loss_ita, info_dict = model(image, text_input, idx=idx, text_idx=text_idx, epoch=epoch, max_epoch=max_epoch)
             loss_ita.backward()
@@ -68,8 +80,9 @@ def train_one_epoch(
             grad_scaler.scale(loss_ita).backward()
             grad_scaler.step(optimizer)
             grad_scaler.update()
+
         
-        metric_logger.update(loss_ita=loss_ita.item())
+        
 
         if args.ita_type in ['sogclr_dro', 'isogclr_new']:
             metric_logger.update(avg_image_tau=info_dict['avg_image_tau'])
@@ -120,11 +133,18 @@ def train_one_epoch(
             metric_logger.update(v=0.0)
             metric_logger.update(lamda=0.0)
 
+        
+        metric_logger.update(loss_ita=loss_ita.item())   
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
         metric_logger.update(lr_temp_net=optimizer.param_groups[2]["lr"])
+        if i % args.print_freq_per_epoch == 0:
+            progress_bar.set_postfix(
+                loss_ita=f"{loss_ita.item():.4f}",
+                lr=f"{optimizer.param_groups[0]['lr']:.6f}"
+            )
         if epoch==0 and i%step_size==0 and i<=warmup_iterations and scheduler is not None: 
             scheduler.step(i//step_size)
-
+    progress_bar.close()
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger.global_avg())
@@ -233,8 +253,11 @@ def load_model_from_checkpoint(model, args):
         if match:
             start_epoch = int(match.group(1))
         else:
-            print("No checkpoint found")
-
+            start_epoch = 0
+            print("No checkpoint found. Starting from 0")
+    else:
+        start_epoch = 0
+        model = None
     return model, start_epoch
 
 def extract_and_save_sample_tau(train_loader, model, tokenizer, args):

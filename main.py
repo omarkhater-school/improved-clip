@@ -68,8 +68,10 @@ def run_pipeline(args):
     model = model.to(device)
 
     ## Resume learning (if applicable)
-    model, start_epoch = load_model_from_checkpoint(model, args)
-    args.start_epoch = start_epoch
+    if args.evaluate or args.ita_type == 'isogclr_denoise':
+        model, start_epoch = load_model_from_checkpoint(model, args)
+    else:
+        args.start_epoch = 0
     extract_and_save_sample_tau(train_loader, model, tokenizer, args)
 
     ## Training
@@ -90,7 +92,18 @@ def run_pipeline(args):
                
     ## Evaluation
     if args.evaluate:
-        val_result, zeroshot_results = evaluate_model(val_loader, model_without_ddp, tokenizer, args, zeroshot_dataloader)
+        val_result, zeroshot_results = evaluate_model(
+            val_loader, 
+            model_without_ddp, 
+            tokenizer, 
+            args, 
+            zeroshot_dataloader
+        )
+        objective_value = get_objective_value(
+            val_result, 
+            zeroshot_results
+        )
+        print("objective value: {objective_value}")
     return 
 
 if __name__ == '__main__':
@@ -141,7 +154,8 @@ if __name__ == '__main__':
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
     parser.add_argument('--distributed', action='store_true')
     parser.add_argument('--no-distributed', dest='distributed', action='store_false')
-
+    parser.add_argument("--step_size_per_epoch", default =100, type=int)
+    parser.add_argument("--print_freq_per_epoch", default = 100, type = int)
     # output path
     parser.add_argument('--output_dir', default='./output/clip_test')  
 
@@ -186,6 +200,6 @@ if __name__ == '__main__':
         args.evaluate = True
     args = set_path(args)
 
-    run_pipeline(args)
+    train_stats = run_pipeline(args)
 
 
