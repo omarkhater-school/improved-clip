@@ -70,6 +70,7 @@ def run_pipeline(args):
     ## Resume learning (if applicable)
     if args.evaluate or args.ita_type == 'isogclr_denoise':
         model, start_epoch = load_model_from_checkpoint(model, args)
+        args.start_epoch = start_epoch
     else:
         args.start_epoch = 0
     extract_and_save_sample_tau(train_loader, model, tokenizer, args)
