@@ -26,7 +26,7 @@ def run_pipeline(args):
     # fix the seed for reproducibility
     seed = args.seed + utils.get_rank()
     #### Dataset #### 
-    print("Creating retrieval dataset")
+    print("***\nCreating retrieval dataset\n***")
     train_loader, val_coco_loader = prepare_data_loaders(args)
     if args.text_encoder == 'roberta-large':
         tokenizer = RobertaTokenizer.from_pretrained(args.text_encoder)
@@ -44,7 +44,7 @@ def run_pipeline(args):
         zeroshot_dataloader = None
 
     #### Model #### 
-    print("Creating model")
+    print("***\nCreating model\n***")
     model = CLIP(
         image_encoder=args.image_encoder, 
         text_encoder=args.text_encoder, 
