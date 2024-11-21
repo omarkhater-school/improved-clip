@@ -71,7 +71,7 @@ def evaluation(model, data_loader, tokenizer, device, args):
         
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-    print('Evaluation time {}'.format(total_time_str)) 
+    print('Model Retrieval Evaluation time {}'.format(total_time_str)) 
 
     return score_matrix_i2t.cpu().numpy(), score_matrix_t2i.cpu().numpy()
 
@@ -128,6 +128,7 @@ def evaluate_model(val_loader, model, tokenizer, args, zeroshot_dataloader=None)
     """
     Evaluate the model on validation or test datasets and optionally perform zero-shot evaluation.
     """
+    start_time = time.time()
     model.eval()
     device = args.device
 
@@ -188,6 +189,10 @@ def evaluate_model(val_loader, model, tokenizer, args, zeroshot_dataloader=None)
             f.write(json.dumps(log_stats) + "\n")
         print(f"Evaluation results logged to {log_file}")
 
+
+    total_time = time.time() - start_time
+    total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+    print('Overall Evaluation time {}'.format(total_time_str)) 
     return val_result, zeroshot_results
 
 def get_objective_value(val_result, zeroshot_results = None):
