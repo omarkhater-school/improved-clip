@@ -5,9 +5,6 @@ import torch.nn.functional as F
 import torch.distributed as dist
 import datetime
 import numpy as np
-from tqdm import tqdm
-import os
-import pickle
 
 
 @torch.no_grad()
@@ -125,43 +122,3 @@ def itm_eval(scores_i2t, scores_t2i, txt2img, img2txt):
                     'img_r_mean': ir_mean,
                     'r_mean': r_mean}
     return eval_result
-
-
-
-def run_eval(train_loader, model, tokenizer, args):
-    if args.evaluate or args.ita_type == 'isogclr_denoise':
-        assert len(args.checkpoint) > 0
-        checkpoint = torch.load(args.checkpoint, map_location='cpu') 
-        state_dict = checkpoint['model']             
-        model.load_state_dict(state_dict, strict=False)  
-        print('load checkpoint from %s' % args.checkpoint)
-
-    if args.check_samples_tau:
-        print("***\nstarting pre training evaluation\n***")
-        image_tau_array = []
-        text_tau_array = []
-
-        model.eval() 
-    
-        with torch.no_grad():
-            for image, text, idx, text_idx in tqdm(train_loader):
-                image = image.to(args.device)
-                text = tokenizer(text, padding='max_length', truncation=True, max_length=30, return_tensors="pt").to(args.device)
-
-                image_feat = F.normalize(model.vision_proj(model.visual_encoder(image)), dim=-1)
-                text_output = model.text_encoder(text.input_ids, attention_mask=text.attention_mask, output_hidden_states=False)
-                text_feat = F.normalize(model.text_proj(text_output.last_hidden_state[:,0,:]), dim=-1)
-            
-                tau_image = model.criterion.image_temp_gen(image_feat).cpu().squeeze().numpy()
-                tau_text = model.criterion.text_temp_gen(text_feat).cpu().squeeze().numpy()
-
-                image_tau_array.append(tau_image)
-                text_tau_array.append(tau_text)
-
-            image_tau_array = np.concatenate(image_tau_array) 
-            text_tau_array = np.concatenate(text_tau_array)
-
-        with open(os.path.join(args.output_dir, "tau.pkl"), "wb") as f:
-            pickle.dump({"tau_image":image_tau_array, "tau_text":text_tau_array}, f, protocol=pickle.HIGHEST_PROTOCOL)
-
-        assert 0

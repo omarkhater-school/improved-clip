@@ -4,13 +4,12 @@ from models.model_clip import CLIP
 from transformers import AutoTokenizer, RobertaTokenizer
 from scheduler import create_scheduler
 from optim import create_optimizer
-from evaluation import run_eval
 import torch
 from zero_shot_helpers import create_zeroshot_dataloader
 from prepare_data import prepare_data_loaders
 import utils
 from utils import warn, set_random, set_path
-from train import train_model
+from train import train_model, extract_and_save_sample_tau, load_model_from_checkpoint
 
 
 warnings.warn = warn
@@ -70,9 +69,9 @@ def run_pipeline(args):
                  )
     model = model.to(device)
 
-
-    ## Evaluation
-    run_eval(train_loader, model, tokenizer, args)
+    ## Resume learning (if applicable)
+    model = load_model_from_checkpoint(model, args)
+    extract_and_save_sample_tau(train_loader, model, tokenizer, args)
 
     ## Training
     optimizer = create_optimizer(args, model)
