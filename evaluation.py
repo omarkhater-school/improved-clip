@@ -5,7 +5,8 @@ import torch.nn.functional as F
 import torch.distributed as dist
 import datetime
 import numpy as np
-
+import json, os
+from zero_shot_helpers import zeroshot_transfer
 
 @torch.no_grad()
 def evaluation(model, data_loader, tokenizer, device, args):
@@ -122,3 +123,66 @@ def itm_eval(scores_i2t, scores_t2i, txt2img, img2txt):
                     'img_r_mean': ir_mean,
                     'r_mean': r_mean}
     return eval_result
+
+def evaluate_model(val_loader, model, tokenizer, args, zeroshot_dataloader=None):
+    """
+    Evaluate the model on validation or test datasets and optionally perform zero-shot evaluation.
+    """
+    model.eval()
+    device = args.device
+
+    if args.distributed:
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
+        model_without_ddp = model.module
+    else:
+        model_without_ddp = model
+
+    print("***\nStarting evaluation\n***")
+
+    # Evaluate on validation set
+    score_val_i2t, score_val_t2i = evaluation(
+        model_without_ddp,
+        val_loader,
+        tokenizer,
+        device,
+        args
+    )
+
+    # Compute metrics for validation
+    val_result = itm_eval(
+        score_val_i2t,
+        score_val_t2i,
+        val_loader.dataset.txt2img,
+        val_loader.dataset.img2txt
+    )
+    print("Validation results:", val_result)
+
+    # Optional zero-shot evaluation
+    if zeroshot_dataloader:
+        zeroshot_results = zeroshot_transfer(
+            model_without_ddp,
+            zeroshot_dataloader,
+            args.zs_dataset,
+            tokenizer,
+            device
+        )
+        print("Zero-shot results:", zeroshot_results)
+    else:
+        zeroshot_results = None
+
+    # Logging evaluation results
+    if utils.is_main_process():
+        log_stats = {
+            **{f'val_{k}': v for k, v in val_result.items()},
+            'epoch': args.start_epoch,  # Or specify evaluation-specific identifier
+            'data': 'validation',
+        }
+
+        if zeroshot_results:
+            log_stats.update({f'zeroshot_{k}': v for k, v in zeroshot_results.items()})
+
+        # Save log to file
+        log_file = os.path.join(args.output_dir, "eval_log.txt")
+        with open(log_file, "a") as f:
+            f.write(json.dumps(log_stats) + "\n")
+        print(f"Evaluation results logged to {log_file}")

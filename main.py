@@ -10,7 +10,7 @@ from prepare_data import prepare_data_loaders
 import utils
 from utils import warn, set_random, set_path
 from train import train_model, extract_and_save_sample_tau, load_model_from_checkpoint
-
+from evaluation import evaluate_model
 
 warnings.warn = warn
 #%% 
@@ -19,14 +19,12 @@ def run_pipeline(args):
         utils.init_distributed_mode(args)    
     else:
         args.gpu = 0
-    
     device = torch.device(args.device)
-    set_random(args.seed)
-    # fix the seed for reproducibility
     seed = args.seed + utils.get_rank()
+    set_random(seed)    
     #### Dataset #### 
     print("***\nCreating retrieval dataset\n***")
-    train_loader, val_coco_loader = prepare_data_loaders(args)
+    train_loader, val_loader = prepare_data_loaders(args)
     if args.text_encoder == 'roberta-large':
         tokenizer = RobertaTokenizer.from_pretrained(args.text_encoder)
     else:
@@ -70,7 +68,8 @@ def run_pipeline(args):
     model = model.to(device)
 
     ## Resume learning (if applicable)
-    model = load_model_from_checkpoint(model, args)
+    model, start_epoch = load_model_from_checkpoint(model, args)
+    args.start_epoch = start_epoch
     extract_and_save_sample_tau(train_loader, model, tokenizer, args)
 
     ## Training
@@ -78,18 +77,21 @@ def run_pipeline(args):
     lr_scheduler, _ = create_scheduler(args, optimizer)
     print("Start training")
 
-    train_model(train_loader, 
-                val_coco_loader,
-                zeroshot_dataloader, 
-                model,
-                optimizer,
-                tokenizer,
-                lr_scheduler, 
-                args
-                )
+    model_without_ddp, train_stats = train_model(
+        train_loader, 
+        model, 
+        optimizer, 
+        tokenizer, 
+        lr_scheduler, 
+        args, 
+        val_loader, 
+        zeroshot_dataloader
+        )
                
-
-    return 
+    ## Evaluation
+    if args.evaluate:
+        evaluate_model(val_loader, model_without_ddp, tokenizer, args, zeroshot_dataloader)
+    return train_stats
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -131,6 +133,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size_test', default=128, type=int)
     parser.add_argument('--k_test', default=256, type=int)
     parser.add_argument('--evaluate', action='store_true')
+    parser.add_argument("--val_frequency", type = int, default=5)
     parser.add_argument('--checkpoint', default='', type=str)
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--seed', default=42, type=int)
@@ -183,6 +186,6 @@ if __name__ == '__main__':
         args.evaluate = True
     args = set_path(args)
 
-    run_pipeline(args)
+    train_stats = run_pipeline(args)
 
 

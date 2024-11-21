@@ -2,14 +2,13 @@ import utils
 import torch
 import os
 import time
-from evaluation import evaluation, itm_eval
-from zero_shot_helpers import zeroshot_transfer
+from evaluation import evaluate_model
 import pickle
-import json
 import torch.distributed as dist
 import datetime
 import numpy as np
 from tqdm import tqdm
+import torch.nn.functional as F
 #%% 
 def train_one_epoch(
         model, 
@@ -128,149 +127,113 @@ def train_one_epoch(
 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
-    print("Averaged stats:", metric_logger.global_avg())     
-    return {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}  
+    print("Averaged stats:", metric_logger.global_avg())
+    train_stats =  {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}   
+    return model, train_stats
 
 
 #%% 
-def train_model(train_loader, 
-                val_loader,
-                zeroshot_dataloader, 
-                model,
-                optimizer,
-                tokenizer,
-                lr_scheduler, 
-                args
+def train_model(
+        train_loader, 
+        model, 
+        optimizer, 
+        tokenizer, 
+        lr_scheduler, 
+        args, 
+        val_loader, 
+        zeroshot_dataloader = None
                 ):
-    
+    """
+    Train the model with support for resume learning and saving checkpoints and tau.
+    """
+    # Wrap the model for distributed training
     if args.distributed:
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
         model_without_ddp = model.module
     else:
         model_without_ddp = model
 
-    if args.use_amp:
-        grad_scaler = torch.cuda.amp.GradScaler()
-    else:
-        grad_scaler = None
+    # Set up gradient scaler for mixed precision training
+    grad_scaler = torch.cuda.amp.GradScaler() if args.use_amp else None
 
-    best_epoch = 0
+    # Initialize training parameters
+    start_epoch = args.start_epoch
     max_epoch = args.epochs
     warmup_steps = args.warmup_epochs
-    start_time = time.time()    
+    start_time = time.time()
 
-    for epoch in range(0, max_epoch):
-        if not args.evaluate:
-
-            if args.distributed:
-                train_loader.sampler.set_epoch(epoch)
-            
-            train_stats = train_one_epoch(
-                model, 
-                train_loader, 
-                optimizer, 
-                tokenizer, 
-                epoch, 
-                max_epoch, 
-                warmup_steps, 
-                args.device, 
-                lr_scheduler, 
-                grad_scaler, 
-                args)
-            
-        if args.evaluate:
-            score_val_i2t_coco, score_val_t2i_coco = evaluation(
-                model_without_ddp, 
-                val_loader, 
-                tokenizer, 
-                args.device, 
-                args
-                )
-
-        if utils.is_main_process():  
-
-            if args.evaluate:
-                val_result_coco = itm_eval(
-                    score_val_i2t_coco, 
-                    score_val_t2i_coco, 
-                    val_loader.dataset.txt2img, 
-                    val_loader.dataset.img2txt
-                    )  
-                print("coco val:", val_result_coco)
-
-
-                if args.zs_dataset:
-                    zeroshot_results = zeroshot_transfer(
-                        model_without_ddp, 
-                        zeroshot_dataloader, 
-                        args.zs_dataset, 
-                        tokenizer, 
-                        args.device
-                        )
-                    print("zeroshot:", zeroshot_results)
-                else:
-                    zeroshot_results = None
-
-            # save tau for visualization
-            if not args.evaluate and args.store_tau and (epoch+1)%10==0:
-                print("saving tau...")
-                tau_image = model_without_ddp.criterion.tau_I.clone().cpu().numpy()
-                tau_text = model_without_ddp.criterion.tau_T.clone().cpu().numpy()
-
-                with open(os.path.join(args.output_dir, "tau_"+str(epoch)+".pkl"), "wb") as f:
-                    pickle.dump({"tau_image":tau_image, "tau_text":tau_text}, f, protocol=pickle.HIGHEST_PROTOCOL)
-            
-            if args.evaluate:                
-                log_stats = {**{f'val_{k}': v for k, v in val_result_coco.items()},                 
-                             'epoch': epoch,
-                             'data': 'coco',
-                            }
-                with open(os.path.join(args.output_dir, "coco_log.txt"),"a") as f:
-                    f.write(json.dumps(log_stats) + "\n")    
-
-                if zeroshot_results:
-                    with open(os.path.join(args.output_dir, f"zeroshot_{args.zs_dataset}_log.txt"), "a") as f:
-                        f.write(json.dumps(zeroshot_results) + "\n")
-
-            else:
-                log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                            #  **{f'val_{k}': v for k, v in val_result_coco.items()},                
-                             'epoch': epoch,
-                             'data': 'coco',
-                            }
-                with open(os.path.join(args.output_dir, "coco_log.txt"),"a") as f:
-                    f.write(json.dumps(log_stats) + "\n")
-
-                save_obj = {
-                    'model': model_without_ddp.state_dict()
-                }
-                torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_'+str(epoch+1)+'.pth'))
-                    
-        if args.evaluate: 
-            break
-           
-        lr_scheduler.step(epoch+warmup_steps+1)  
+    for epoch in range(start_epoch, max_epoch):
+        # Update sampler for distributed training
         if args.distributed:
-            dist.barrier()     
+            train_loader.sampler.set_epoch(epoch)
+
+        # Train for one epoch
+        model, train_stats = train_one_epoch(
+            model, 
+            train_loader, 
+            optimizer, 
+            tokenizer, 
+            epoch, 
+            max_epoch, 
+            warmup_steps, 
+            args.device, 
+            lr_scheduler, 
+            grad_scaler, 
+            args
+        )
+
+        # Evaluate the model at specified intervals
+        if (epoch + 1) % args.val_frequency == 0:
+            print(f"\n*** Evaluation at Epoch {epoch + 1} ***\n")
+            evaluate_model(val_loader, model_without_ddp, tokenizer, args, zeroshot_dataloader)
+        # Save tau values every 10 epochs (if requested)
+        if args.store_tau and (epoch + 1) % 10 == 0:
+            print("Saving tau values...")
+            tau_image = model_without_ddp.criterion.tau_I.clone().cpu().numpy()
+            tau_text = model_without_ddp.criterion.tau_T.clone().cpu().numpy()
+            with open(os.path.join(args.output_dir, f"tau_{epoch + 1}.pkl"), "wb") as f:
+                pickle.dump({"tau_image": tau_image, "tau_text": tau_text}, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        # Save checkpoint after every epoch
+        save_obj = {
+            'model': model_without_ddp.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'lr_scheduler': lr_scheduler.state_dict(),
+            'args': vars(args),
+            'epoch': epoch,
+        }
+        checkpoint_path = os.path.join(args.output_dir, f'checkpoint_{epoch + 1}.pth')
+        torch.save(save_obj, checkpoint_path)
+
+        # Step the learning rate scheduler
+        lr_scheduler.step(epoch + warmup_steps + 1)
+
+        if args.distributed:
+            dist.barrier()
         torch.cuda.empty_cache()
 
+    # Log total training time
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-    print('Training time {}'.format(total_time_str)) 
-
-    if utils.is_main_process():   
-        with open(os.path.join(args.output_dir, "coco_log.txt"),"a") as f:
-            f.write("best epoch: %d"%best_epoch)  
-
+    print(f'Training time: {total_time_str}')
+  
+    return train_stats
 
 def load_model_from_checkpoint(model, args):
+    import re
     if args.evaluate or args.ita_type == 'isogclr_denoise':
         assert len(args.checkpoint) > 0
         checkpoint = torch.load(args.checkpoint, map_location='cpu') 
         state_dict = checkpoint['model']             
         model.load_state_dict(state_dict, strict=False)  
         print('load checkpoint from %s' % args.checkpoint)
-    return model 
+        match = re.search(r'checkpoint_(\d+)\.pth', args.checkpoint)
+        if match:
+            start_epoch = int(match.group(1))
+        else:
+            print("No checkpoint found")
+
+    return model, start_epoch
 
 def extract_and_save_sample_tau(train_loader, model, tokenizer, args):
 
