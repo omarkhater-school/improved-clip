@@ -1,15 +1,67 @@
+import argparse
 from sagemaker.pytorch import PyTorch
+from config import role, region
+import os, json
+from config import aws_access_key_id, aws_secret_access_key
+os.environ["AWS_ACCESS_KEY_ID"] = aws_access_key_id
+os.environ["AWS_SECRET_ACCESS_KEY"] = aws_secret_access_key
 
-estimator = PyTorch(
-    entry_point='train.py',
-    role='your-sagemaker-role',
-    instance_type='ml.p3.2xlarge',  # GPU instance
-    instance_count=1,
-    framework_version='1.12.0',
-    py_version='py38',
-    hyperparameters={
-        "batch_size_train": 128,
-        "epochs": 30,
-        "image_res": 256,
+def parse_args():
+    parser = argparse.ArgumentParser(description="Run SageMaker training job with CLIP.")
+    # Accept all CLI arguments from the original script dynamically
+    parser.add_argument("--job_name", required=True, help="SageMaker training job name.")
+    parser.add_argument("--entry_point", default="main.py", help="Path to the main training script.")
+    parser.add_argument("--instance_type", default="ml.c4.2xlarge", help="Instance type for training.")
+    parser.add_argument("--source_dir", default=".", help="Directory containing training code.")
+    parser.add_argument("--config_file", required=True, help="Path to JSON configuration file for the hyper-parameters.")
+    parser.add_argument("--use_spot", action="store_true", help="Use spot instances for cost savings.")
+    parser.add_argument("--max_wait", type=int, default=3600, help="Maximum wait time (in seconds) for spot instances.")
+    return parser.parse_args()
+
+def main():
+    args = parse_args()
+    with open(args.config_file, "r") as f:
+        hyperparameters = json.load(f)
+    
+    # Spot instance configuration
+    spot_config = {
+        "use_spot_instances": args.use_spot,
+        "max_wait": args.max_wait if args.use_spot else None,
     }
-)
+        
+    estimator = PyTorch(
+        entry_point=args.entry_point,
+        source_dir=args.source_dir,
+        role=role,
+        instance_type=args.instance_type,
+        instance_count=1,
+        framework_version="2.0.1",
+        py_version="py310",
+        output_path="s3://competitions23/CSCE636_DL_project/outputs",
+        base_job_name=args.job_name,
+        hyperparameters=hyperparameters,
+        region_name=region,
+        max_run = 5 * 3600, 
+        environment={
+        "AWS_ACCESS_KEY_ID": aws_access_key_id,
+        "AWS_SECRET_ACCESS_KEY": aws_secret_access_key
+    },
+        metric_definitions=[
+        {"Name": "LearningRate", "Regex": "lr=([0-9\\.]+)"},
+        {"Name": "LossIta", "Regex": "loss_ita=([0-9\\.]+)"},
+        {"Name": "AvgImageTau", "Regex": "avg_image_tau=([0-9\\.]+)"},
+        {"Name": "AvgTextTau", "Regex": "avg_text_tau=([0-9\\.]+)"},
+        {"Name": "ObjectiveValue", "Regex": "objective_value=([0-9\\.]+)"},
+    ], 
+        **spot_config
+    )
+
+    estimator.fit(
+        {
+            "train": f"s3://competitions23/CSCE636_DL_project/datasets"
+        }, 
+        wait= False
+    )
+
+if __name__ == "__main__":
+    main()

@@ -69,12 +69,13 @@ def run_pipeline(args):
     model = model.to(device)
 
     ## Resume learning (if applicable)
-    if args.evaluate or args.ita_type == 'isogclr_denoise':
+    if args.resume_learning:
         model, start_epoch = load_model_from_checkpoint(model, args)
         args.start_epoch = start_epoch
     else:
         args.start_epoch = 0
-    extract_and_save_sample_tau(train_loader, model, tokenizer, args)
+
+    # extract_and_save_sample_tau(train_loader, model, tokenizer, args)
 
     ## Training
     optimizer = create_optimizer(args, model)
@@ -142,22 +143,23 @@ if __name__ == '__main__':
     parser.add_argument('--cooldown_epochs', default=0, type=int)
 
     # training & test settings
-    parser.add_argument('--use_amp', action='store_true')
-    parser.add_argument('--init_model', action='store_true')
+    parser.add_argument('--use_amp', type = bool, default= True)
+    parser.add_argument('--init_model', type = bool, default= True)
     parser.add_argument('--batch_size_train', default=128, type=int)
     parser.add_argument('--batch_size_test', default=128, type=int)
     parser.add_argument('--k_test', default=256, type=int)
-    parser.add_argument('--evaluate', action='store_true')
+    parser.add_argument('--evaluate', type = bool, default= False)
     parser.add_argument("--val_frequency", type = int, default=2)
     parser.add_argument('--checkpoint', default='', type=str)
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')    
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
-    parser.add_argument('--distributed', action='store_true')
-    parser.add_argument('--no-distributed', dest='distributed', action='store_false')
+    parser.add_argument('--distributed', type = bool, default= False)
+    parser.add_argument('--no-distributed', type = bool, default= False)
     parser.add_argument("--step_size_per_epoch", default =100, type=int)
     parser.add_argument("--print_freq_per_epoch", default = 100, type = int)
+    parser.add_argument("--resume_learning", default = False, type = bool)
     # output path
     parser.add_argument('--output_dir', default='./output/clip_test')  
 
@@ -173,11 +175,11 @@ if __name__ == '__main__':
     parser.add_argument('--tau_init', default=0.01, type=float)
     parser.add_argument('--beta_u', default=0.9, type=float)
     parser.add_argument('--temp', default=0.01, type=float)
-    parser.add_argument('--learnable_temp', action='store_true')
-    parser.add_argument('--personalized_tau', action='store_true')
+    parser.add_argument('--learnable_temp', type = bool, default= True)
+    parser.add_argument('--personalized_tau', type = bool, default= True)
     parser.add_argument('--max_norm', default=1.0, type=float)
-    parser.add_argument('--store_tau', action='store_true')
-    parser.add_argument('--isogclr_temp_net', action='store_true')
+    parser.add_argument('--store_tau', type = bool, default= True)
+    parser.add_argument('--isogclr_temp_net', type = bool, default= True)
     parser.add_argument('--alpha', default=1.0, type=float, help='for isogclr_denoise')
 
     parser.add_argument('--train_frac', 
@@ -186,13 +188,15 @@ if __name__ == '__main__':
                         type=float)
     parser.add_argument('--check_samples_tau', 
                         help = "check samples with high/low temperature values",
-                        action='store_true')
+                        type = bool, 
+                        default= True)
     parser.add_argument('--extract_data', 
                         help = "extract data from the cc3m dataset", 
-                        action='store_true')
+                        type = bool, 
+                        default= True)
     parser.add_argument('--zs_dataset', 
                         help = "zero-shot transfer", 
-                        default="", 
+                        default="imagenet", 
                         choices=['cifar10', 'cifar100', 'imagenet'])
     parser.add_argument('--zs_datafolder', default='./datasets', type=str)
 
