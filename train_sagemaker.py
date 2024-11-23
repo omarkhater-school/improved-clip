@@ -48,7 +48,7 @@ def main():
     },
         metric_definitions=[ 
     {"Name": "LearningRate", "Regex": "lr=([0-9\\.]+)"},  # Learning rate metric
-    {"Name": "Iteration_loss", "Regex": "Iteration [0-9]+, Epoch [0-9]+, Iteration Loss: ([0-9\\.]+)"},  # Iteration loss
+    {"Name": "Iteration_loss", "Regex": "loss_ita=([0-9\\.]+)"},  # Iteration loss
     {"Name": "AvgImageTau", "Regex": "Average Image Tau: ([0-9\\.]+)"},  # Average Image Tau per epoch
     {"Name": "AvgTextTau", "Regex": "Average Text Tau: ([0-9\\.]+)"},  # Average Text Tau per epoch
     {"Name": "GradTauImage", "Regex": "Average Grad Tau Image: ([0-9\\.]+)"},  # Gradient Tau Image per epoch

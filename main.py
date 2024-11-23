@@ -11,7 +11,7 @@ import utils
 from utils import warn, set_random, set_path
 from train import train_model, extract_and_save_sample_tau, load_model_from_checkpoint
 from evaluation import evaluate_model, get_objective_value
-
+import ast
 warnings.warn = warn
 #%% 
 def run_pipeline(args):
@@ -24,6 +24,7 @@ def run_pipeline(args):
     set_random(seed)    
     #### Dataset #### 
     args = manage_paths_and_environment(args)
+    print(f"Args after manage path: \n{args}")
     print("***\nCreating retrieval dataset\n***")
     train_loader, val_loader = prepare_data_loaders(args)
     if args.text_encoder == 'roberta-large':
@@ -134,7 +135,7 @@ if __name__ == '__main__':
     parser.add_argument('--wd_temp_net', default=1e-3, type=float,
                         help='weight decay for temperature network')
     parser.add_argument('--min_lr', default=1e-6, type=float)
-    parser.add_argument('--warmup', default=True, type=bool)
+    parser.add_argument('--warmup', default=True, type=ast.literal_eval)
     parser.add_argument('--warmup_lr', default=1e-5, type=float)
     parser.add_argument('--weight_decay', default=0.02, type=float)
     parser.add_argument('--decay_rate', default=1, type=float)
@@ -143,23 +144,23 @@ if __name__ == '__main__':
     parser.add_argument('--cooldown_epochs', default=0, type=int)
 
     # training & test settings
-    parser.add_argument('--use_amp', type = bool, default= True)
-    parser.add_argument('--init_model', type = bool, default= True)
+    parser.add_argument('--use_amp', type = ast.literal_eval, default= True)
+    parser.add_argument('--init_model', type = ast.literal_eval, default= True)
     parser.add_argument('--batch_size_train', default=128, type=int)
     parser.add_argument('--batch_size_test', default=128, type=int)
     parser.add_argument('--k_test', default=256, type=int)
-    parser.add_argument('--evaluate', type = bool, default= False)
+    parser.add_argument('--evaluate', type = ast.literal_eval, default= False)
     parser.add_argument("--val_frequency", type = int, default=2)
     parser.add_argument('--checkpoint', default='', type=str)
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')    
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
-    parser.add_argument('--distributed', type = bool, default= False)
-    parser.add_argument('--no-distributed', type = bool, default= False)
+    parser.add_argument('--distributed', type = ast.literal_eval, default= False)
+    parser.add_argument('--no-distributed', type = ast.literal_eval, default= False)
     parser.add_argument("--step_size_per_epoch", default =100, type=int)
     parser.add_argument("--print_freq_per_epoch", default = 100, type = int)
-    parser.add_argument("--resume_learning", default = False, type = bool)
+    parser.add_argument("--resume_learning", default = False, type = ast.literal_eval)
     # output path
     parser.add_argument('--output_dir', default='./output/clip_test')  
 
@@ -175,11 +176,11 @@ if __name__ == '__main__':
     parser.add_argument('--tau_init', default=0.01, type=float)
     parser.add_argument('--beta_u', default=0.9, type=float)
     parser.add_argument('--temp', default=0.01, type=float)
-    parser.add_argument('--learnable_temp', type = bool, default= True)
-    parser.add_argument('--personalized_tau', type = bool, default= True)
+    parser.add_argument('--learnable_temp', type = ast.literal_eval, default= True)
+    parser.add_argument('--personalized_tau', type = ast.literal_eval, default= True)
     parser.add_argument('--max_norm', default=1.0, type=float)
-    parser.add_argument('--store_tau', type = bool, default= True)
-    parser.add_argument('--isogclr_temp_net', type = bool, default= True)
+    parser.add_argument('--store_tau', type = ast.literal_eval, default= True)
+    parser.add_argument('--isogclr_temp_net', type = ast.literal_eval, default= True)
     parser.add_argument('--alpha', default=1.0, type=float, help='for isogclr_denoise')
 
     parser.add_argument('--train_frac', 
@@ -188,11 +189,11 @@ if __name__ == '__main__':
                         type=float)
     parser.add_argument('--check_samples_tau', 
                         help = "check samples with high/low temperature values",
-                        type = bool, 
+                        type = ast.literal_eval, 
                         default= True)
     parser.add_argument('--extract_data', 
                         help = "extract data from the cc3m dataset", 
-                        type = bool, 
+                        type = ast.literal_eval, 
                         default= True)
     parser.add_argument('--zs_dataset', 
                         help = "zero-shot transfer", 
@@ -202,10 +203,13 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+
     if args.check_samples_tau:
         args.evaluate = True
     args = set_path(args)
 
+
+    print(f"Args before running the pipeline: \n{args}")
     run_pipeline(args)
 
 

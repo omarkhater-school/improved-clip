@@ -128,71 +128,77 @@ def evaluate_model(val_loader, model, tokenizer, args, zeroshot_dataloader=None)
     """
     Evaluate the model on validation or test datasets and optionally perform zero-shot evaluation.
     """
-    start_time = time.time()
-    model.eval()
-    device = args.device
+    try:
+        start_time = time.time()
+        model.eval()
+        device = args.device
 
-    if args.distributed:
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
-        model_without_ddp = model.module
-    else:
-        model_without_ddp = model
+        if args.distributed:
+            model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
+            model_without_ddp = model.module
+        else:
+            model_without_ddp = model
 
-    print("***\nStarting evaluation\n***")
+        print("***\nStarting evaluation\n***")
 
-    # Evaluate on validation set
-    score_val_i2t, score_val_t2i = evaluation(
-        model_without_ddp,
-        val_loader,
-        tokenizer,
-        device,
-        args
-    )
-
-    # Compute metrics for validation
-    val_result = itm_eval(
-        score_val_i2t,
-        score_val_t2i,
-        val_loader.dataset.txt2img,
-        val_loader.dataset.img2txt
-    )
-    print("Validation results:", val_result)
-
-    # Optional zero-shot evaluation
-    if zeroshot_dataloader:
-        print("starting zeroshot transfer...")
-        zeroshot_results = zeroshot_transfer(
+        # Evaluate on validation set
+        score_val_i2t, score_val_t2i = evaluation(
             model_without_ddp,
-            zeroshot_dataloader,
-            args.zs_dataset,
+            val_loader,
             tokenizer,
-            device
+            device,
+            args
         )
-        print("Zero-shot results:", zeroshot_results)
-    else:
-        zeroshot_results = None
 
-    # Logging evaluation results
-    if utils.is_main_process():
-        log_stats = {
-            **{f'val_{k}': v for k, v in val_result.items()},
-            'epoch': args.start_epoch,  # Or specify evaluation-specific identifier
-            'data': 'validation',
-        }
+        # Compute metrics for validation
+        val_result = itm_eval(
+            score_val_i2t,
+            score_val_t2i,
+            val_loader.dataset.txt2img,
+            val_loader.dataset.img2txt
+        )
+        print("Validation results:", val_result)
 
-        if zeroshot_results:
-            log_stats.update({f'zeroshot_{k}': v for k, v in zeroshot_results.items()})
+        # Optional zero-shot evaluation
+        if zeroshot_dataloader:
+            print("starting zeroshot transfer...")
+            zeroshot_results = zeroshot_transfer(
+                model_without_ddp,
+                zeroshot_dataloader,
+                args.zs_dataset,
+                tokenizer,
+                device
+            )
+            print("Zero-shot results:", zeroshot_results)
+        else:
+            zeroshot_results = None
 
-        # Save log to file
-        log_file = os.path.join(args.output_dir, "eval_log.txt")
-        with open(log_file, "a") as f:
-            f.write(json.dumps(log_stats) + "\n")
-        print(f"Evaluation results logged to {log_file}")
+        # Logging evaluation results
+        if utils.is_main_process():
+            log_stats = {
+                **{f'val_{k}': v for k, v in val_result.items()},
+                'epoch': args.start_epoch,  # Or specify evaluation-specific identifier
+                'data': 'validation',
+            }
+
+            if zeroshot_results:
+                log_stats.update({f'zeroshot_{k}': v for k, v in zeroshot_results.items()})
+
+            # Save log to file
+            log_file = os.path.join(args.output_dir, "eval_log.txt")
+            with open(log_file, "a") as f:
+                f.write(json.dumps(log_stats) + "\n")
+            print(f"Evaluation results logged to {log_file}")
 
 
-    total_time = time.time() - start_time
-    total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-    print('Overall Evaluation time {}'.format(total_time_str)) 
+        total_time = time.time() - start_time
+        total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+        print('Overall Evaluation time {}'.format(total_time_str)) 
+    except Exception as e:
+        val_result = {"txt_r1": 0, "img_r1": 0}
+        zeroshot_results = {"zeroshot_top1": 0}
+        print(f"Failed to evaluate the model due to: {e}\n")
+        print(f"Input args: {args}")
     return val_result, zeroshot_results
 
 def get_objective_value(val_result, zeroshot_results = None):

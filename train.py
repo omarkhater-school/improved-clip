@@ -145,7 +145,11 @@ def train_one_epoch(
         if epoch==0 and i%step_size==0 and i<=warmup_iterations and scheduler is not None: 
             scheduler.step(i//step_size)
 
-        print(f"Iteration {i + 1}, Epoch {epoch + 1}, Iteration Loss: {loss_ita.item():.4f}")
+        print(f"""
+              Iteration {i + 1}, 
+              Epoch {epoch + 1}, 
+              Iteration Loss: {loss_ita.item():.4f}
+            """)
     progress_bar.close()
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
@@ -231,11 +235,14 @@ def train_model(
                 )
         # Save tau values every 10 epochs (if requested)
         if args.store_tau and (epoch + 1) % 10 == 0:
-            print("Saving tau values...")
-            tau_image = model_without_ddp.criterion.tau_I.clone().cpu().numpy()
-            tau_text = model_without_ddp.criterion.tau_T.clone().cpu().numpy()
-            with open(os.path.join(args.output_dir, f"tau_{epoch + 1}.pkl"), "wb") as f:
-                pickle.dump({"tau_image": tau_image, "tau_text": tau_text}, f, protocol=pickle.HIGHEST_PROTOCOL)
+            try:
+                print("Saving tau values...")
+                tau_image = model_without_ddp.criterion.tau_I.clone().cpu().numpy()
+                tau_text = model_without_ddp.criterion.tau_T.clone().cpu().numpy()
+                with open(os.path.join(args.output_dir, f"tau_{epoch + 1}.pkl"), "wb") as f:
+                    pickle.dump({"tau_image": tau_image, "tau_text": tau_text}, f, protocol=pickle.HIGHEST_PROTOCOL)
+            except Exception as e:
+                print(f"Failed to save tau values due to: \n{e}")
 
         # Save checkpoint after every epoch
         save_obj = {
