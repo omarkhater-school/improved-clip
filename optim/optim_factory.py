@@ -45,7 +45,7 @@ def add_weight_decay(model, args, weight_decay=1e-5, skip_list=()):
 
 
 def create_optimizer(args, model, filter_bias_and_bn=True):
-    opt_lower = args.opt.lower()
+    opt_lower = args.optimizer.lower()
     weight_decay = args.weight_decay
     if weight_decay and filter_bias_and_bn:
         skip = {}

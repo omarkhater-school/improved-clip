@@ -138,6 +138,7 @@ class CLIP(nn.Module):
                 feature_dim=embed_dim
                 )
         else:
+            print(f"Loss function: {self.ita_type} is not yet implemented")
             raise NotImplementedError
 
 

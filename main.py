@@ -51,7 +51,7 @@ def run_pipeline(args):
         init_model=args.init_model, 
         bsz=args.batch_size_train*args.world_size,
         world_size=args.world_size, 
-        ita_type=args.ita_type, 
+        ita_type=args.loss_function, 
         sogclr_gamma=args.sogclr_gamma, 
         rho_I=args.rho_I, 
         rho_T=args.rho_T, 
@@ -128,11 +128,13 @@ if __name__ == '__main__':
     parser.add_argument('--embed_dim', default=256, type=int)
 
     # optimizer and schedular
-    parser.add_argument('--opt', default='adamW')
+    parser.add_argument('--optimizer', default='adamW')
     parser.add_argument('--sched', default='cosine')
     parser.add_argument('--lr', default=2e-4, type=float)
     parser.add_argument('--lr_temp_net', default=1e-6, type=float)
-    parser.add_argument('--wd_temp_net', default=1e-3, type=float,
+    parser.add_argument('--wd_temp_net', 
+                        default=1e-3, 
+                        type=float,
                         help='weight decay for temperature network')
     parser.add_argument('--min_lr', default=1e-6, type=float)
     parser.add_argument('--warmup', default=True, type=ast.literal_eval)
@@ -165,8 +167,20 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', default='./output/clip_test')  
 
     # loss config
-    parser.add_argument('--ita_type', required=True, choices=['clip', 'cyclip', 'vicreg', 'sogclr', 'sogclr_dro', 
-                        'isogclr_new_v2', 'isogclr_new_v1', 'isogclr_new', 'onlineclr'])
+    parser.add_argument('--loss_function', 
+                        required=True, 
+                        choices=[
+                            'clip', 
+                            'cyclip', 
+                            'vicreg', 
+                            'sogclr', 
+                            'sogclr_dro', 
+                            'isogclr_new_v2', 
+                            'isogclr_new_v1', 
+                            'isogclr_new', 
+                            'onlineclr'
+                            ]
+                            )
     parser.add_argument('--vicreg_sim_coeff', default=25.0, type=float)
     parser.add_argument('--vicreg_std_coeff', default=25.0, type=float)
     parser.add_argument('--sogclr_gamma', default=0.8, type=float)
@@ -198,7 +212,11 @@ if __name__ == '__main__':
     parser.add_argument('--zs_dataset', 
                         help = "zero-shot transfer", 
                         default="imagenet", 
-                        choices=['cifar10', 'cifar100', 'imagenet'])
+                        choices=[
+                            'cifar10', 
+                            'cifar100', 
+                            'imagenet'
+                            ])
     parser.add_argument('--zs_datafolder', default='./datasets', type=str)
 
     args = parser.parse_args()

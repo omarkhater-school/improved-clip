@@ -84,7 +84,7 @@ def train_one_epoch(
         
         
 
-        if args.ita_type in ['sogclr_dro', 'isogclr_new']:
+        if args.loss_function in ['sogclr_dro', 'isogclr_new']:
             metric_logger.update(avg_image_tau=info_dict['avg_image_tau'])
             metric_logger.update(avg_text_tau=info_dict['avg_text_tau'])
             metric_logger.update(cur_eta=info_dict['cur_eta'])
@@ -96,7 +96,7 @@ def train_one_epoch(
             metric_logger.update(weights_text_pos=0.0)
             metric_logger.update(v=0.0)
             metric_logger.update(lamda=0.0)
-        elif args.ita_type == 'isogclr_new_v2':
+        elif args.loss_function == 'isogclr_new_v2':
             metric_logger.update(avg_image_tau=info_dict['avg_image_tau'])
             metric_logger.update(avg_text_tau=info_dict['avg_text_tau'])
             metric_logger.update(cur_eta=info_dict['cur_eta'])
@@ -108,7 +108,7 @@ def train_one_epoch(
             metric_logger.update(weights_text_pos=0.0)
             metric_logger.update(v=info_dict['v'])
             metric_logger.update(lamda=info_dict['lamda'])
-        elif args.ita_type == 'sogclr':
+        elif args.loss_function == 'sogclr':
             metric_logger.update(avg_image_tau=info_dict['avg_image_tau'])
             metric_logger.update(avg_text_tau=info_dict['avg_text_tau'])
             metric_logger.update(weights_image_pos=0.0)
@@ -197,7 +197,8 @@ def train_model(
     max_epoch = args.epochs
     warmup_steps = args.warmup_epochs
     start_time = time.time()
-
+    objective_values_epochs = []
+    objective_values = []
     for epoch in range(start_epoch, max_epoch):
         # Update sampler for distributed training
         if args.distributed:
@@ -222,8 +223,9 @@ def train_model(
         if (epoch + 1) % args.val_frequency == 0:
             print(f"\n*** Evaluation at Epoch {epoch + 1} ***\n")
             val_result, zeroshot_results = evaluate_model(val_loader, model_without_ddp, tokenizer, args, zeroshot_dataloader)
+            objective_values_epochs.append(epoch + 1)
             objective_value = get_objective_value(val_result, zeroshot_results)
-
+            objective_values.append(objective_value)
             print(
                 f"""
                   Validation Epoch: {epoch + 1}
@@ -266,6 +268,10 @@ def train_model(
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print(f'Training time: {total_time_str}')
+    best_objective_value = max(objective_values)
+    best_objective_value_index = objective_values.index(best_objective_value)
+    best_eval_epoch = objective_values_epochs[best_objective_value_index]
+    print(f"Best Objective value {best_objective_value_index} found at epoch: {best_eval_epoch}")
     
     return model_without_ddp
 
@@ -322,3 +328,4 @@ def extract_and_save_sample_tau(train_loader, model, tokenizer, args):
             pickle.dump({"tau_image":image_tau_array, "tau_text":text_tau_array}, f, protocol=pickle.HIGHEST_PROTOCOL)
 
         assert 0
+# %%
