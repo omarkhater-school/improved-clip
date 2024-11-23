@@ -46,13 +46,20 @@ def main():
         "AWS_ACCESS_KEY_ID": aws_access_key_id,
         "AWS_SECRET_ACCESS_KEY": aws_secret_access_key
     },
-        metric_definitions=[
-        {"Name": "LearningRate", "Regex": "lr=([0-9\\.]+)"},
-        {"Name": "LossIta", "Regex": "loss_ita=([0-9\\.]+)"},
-        {"Name": "AvgImageTau", "Regex": "avg_image_tau=([0-9\\.]+)"},
-        {"Name": "AvgTextTau", "Regex": "avg_text_tau=([0-9\\.]+)"},
-        {"Name": "ObjectiveValue", "Regex": "objective_value=([0-9\\.]+)"},
-    ], 
+        metric_definitions=[ 
+    {"Name": "LearningRate", "Regex": "lr=([0-9\\.]+)"},  # Learning rate metric
+    {"Name": "Iteration_loss", "Regex": "Iteration [0-9]+, Epoch [0-9]+, Iteration Loss: ([0-9\\.]+)"},  # Iteration loss
+    {"Name": "AvgImageTau", "Regex": "Average Image Tau: ([0-9\\.]+)"},  # Average Image Tau per epoch
+    {"Name": "AvgTextTau", "Regex": "Average Text Tau: ([0-9\\.]+)"},  # Average Text Tau per epoch
+    {"Name": "GradTauImage", "Regex": "Average Grad Tau Image: ([0-9\\.]+)"},  # Gradient Tau Image per epoch
+    {"Name": "GradTauText", "Regex": "Average Grad Tau Text: ([0-9\\.]+)"},  # Gradient Tau Text per epoch
+    {"Name": "AvgEpochLoss", "Regex": "Average Epoch Loss: ([0-9\\.]+)"},  # Epoch loss
+    {"Name": "ValidationEpoch", "Regex": "Validation Epoch: ([0-9\\.]+)"},  # Validation epoch
+    {"Name": "ObjectiveValue", "Regex": "objective value: ([0-9\\.]+)"},  # Validation objective value
+    {"Name": "ValidationTxtR1", "Regex": "Validation txt_r1: ([0-9\\.]+)"},  # Validation Text R1 score
+    {"Name": "ValidationImgR1", "Regex": "Validation img_r1: ([0-9\\.]+)"},  # Validation Image R1 score
+    {"Name": "ValidationZS1", "Regex": "Validation zeroshot_top1: ([0-9\\.]+)"}  # Validation Zero-shot Top-1 accuracy
+], 
         **spot_config
     )
 

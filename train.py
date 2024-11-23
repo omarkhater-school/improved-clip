@@ -144,11 +144,23 @@ def train_one_epoch(
             )
         if epoch==0 and i%step_size==0 and i<=warmup_iterations and scheduler is not None: 
             scheduler.step(i//step_size)
+
+        print(f"Iteration {i + 1}, Epoch {epoch + 1}, Iteration Loss: {loss_ita.item():.4f}")
     progress_bar.close()
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
-    print("Averaged stats:", metric_logger.global_avg())
-    train_stats =  {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}   
+    # print("Averaged stats:", metric_logger.global_avg())
+    train_stats =  {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}  
+
+    print(f"""
+          Epoch {epoch + 1}
+          Average Epoch Loss: {metric_logger.meters['loss_ita'].global_avg}
+          Average Image Tau: {metric_logger.meters['avg_image_tau'].global_avg}
+          Average Text Tau: {metric_logger.meters['avg_text_tau'].global_avg}, 
+          Average Grad Tau Image: {metric_logger.meters['grad_tau_image'].global_avg}
+          Average Grad Tau Text: {metric_logger.meters['grad_tau_text'].global_avg}
+        """)
+
     return model, train_stats
 
 
@@ -207,7 +219,16 @@ def train_model(
             print(f"\n*** Evaluation at Epoch {epoch + 1} ***\n")
             val_result, zeroshot_results = evaluate_model(val_loader, model_without_ddp, tokenizer, args, zeroshot_dataloader)
             objective_value = get_objective_value(val_result, zeroshot_results)
-            print(f"objective value: {objective_value}")
+
+            print(
+                f"""
+                  Validation Epoch: {epoch + 1}
+                  Validation txt_r1: {val_result.get("txt_r1")}
+                  Validation img_r1: {val_result.get("img_r1")}
+                  Validation zeroshot_top1: {zeroshot_results.get("zeroshot_top1")}
+                  objective value: {objective_value}
+                """
+                )
         # Save tau values every 10 epochs (if requested)
         if args.store_tau and (epoch + 1) % 10 == 0:
             print("Saving tau values...")
