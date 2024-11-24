@@ -78,22 +78,12 @@ def run_tuning_job(args, train_frac, max_jobs, max_parallel_jobs, epochs):
         "loss_function": CategoricalParameter([
             "sogclr", 
             "isogclr_new_v2", 
-            "isogclr_new_v1", 
             "isogclr_new"
         ]),
         "optimizer": CategoricalParameter([
-            "adam",
-            "momentum",
             "adamw", 
-            "novograd", 
-            "nvnovograd",
             "radam",             
-            "rmsprop",
-            "fusedadam",
-            "fusedmomentum",
-            "fusedadamw",
-            "fusedlamb",
-            "fusednovograd"
+            "fusedlamb"
         ]),
     }
 
@@ -111,18 +101,18 @@ def run_tuning_job(args, train_frac, max_jobs, max_parallel_jobs, epochs):
 
     tuner.fit({
         "train": f"s3://competitions23/CSCE636_DL_project/datasets"
-    })
+    }, 
+    wait= False)
 
 def main():
     args = parse_args()
 
-    # 1. Initial Search: 10 epochs, 20% of data
     run_tuning_job(
         args=args,
-        train_frac=0.2,
-        max_jobs=30,
-        max_parallel_jobs=4,
-        epochs=10
+        train_frac=1,
+        max_jobs=9,
+        max_parallel_jobs=9,
+        epochs=15
     )
 
 if __name__ == "__main__":
