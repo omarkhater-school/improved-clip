@@ -271,7 +271,7 @@ def train_model(
     best_objective_value = max(objective_values)
     best_objective_value_index = objective_values.index(best_objective_value)
     best_eval_epoch = objective_values_epochs[best_objective_value_index]
-    print(f"Best Objective value {best_objective_value_index} found at epoch: {best_eval_epoch}")
+    print(f"Best Objective value {best_objective_value} found at epoch: {best_eval_epoch}")
     
     return model_without_ddp
 

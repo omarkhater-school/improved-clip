@@ -58,7 +58,7 @@ def create_estimator(args, hyperparameters):
         output_path=f"s3://competitions23/CSCE636_DL_project/outputs/{args.job_name}",
         base_job_name=args.job_name,
         hyperparameters=hyperparameters,
-        max_run=6 * 3600,
+        max_run=8 * 3600,
         metric_definitions= METRICS,
         sagemaker_session=sagemaker_session,
         **spot_config
@@ -99,7 +99,7 @@ def run_tuning_job(args, train_frac, max_jobs, max_parallel_jobs, epochs):
 
     tuner = HyperparameterTuner(
         estimator=estimator,
-        objective_metric_name="ObjectiveValue",
+        objective_metric_name="BestObjectiveValue",
         objective_type="Maximize",
         hyperparameter_ranges=hyperparameter_ranges,
         metric_definitions= METRICS, 
@@ -120,7 +120,7 @@ def main():
     run_tuning_job(
         args=args,
         train_frac=0.2,
-        max_jobs=20,
+        max_jobs=30,
         max_parallel_jobs=4,
         epochs=10
     )
