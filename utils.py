@@ -310,6 +310,7 @@ def save_check_point(epoch, model_without_ddp, optimizer, lr_scheduler, args):
         except Exception as e: 
             # save locally instead in the output folder that uploaded to s3 at the end
             print(f"Could not upload checkpoint to s3 due to:\n{e}")
+            print(f"saving locally to {checkpoint_path} instead")
             torch.save(save_obj, checkpoint_path)
     else:
         torch.save(save_obj, checkpoint_path)
