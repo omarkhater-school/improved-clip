@@ -138,7 +138,15 @@ if __name__ == '__main__':
     parser.add_argument('--decay_rate', default=1, type=float)
     parser.add_argument('--epochs', default=30, type=int)
     parser.add_argument('--warmup_epochs', default=5, type=int)
-    parser.add_argument('--cooldown_epochs', default=0, type=int)
+    parser.add_argument('--cooldown_epochs', default=0, type=int),
+    parser.add_argument('--patience_epochs', default=5, type = int, 
+                        help = """
+                        The number of allowed epochs with no improvement after 
+                        which the learning rate will be reduced""")
+    parser.add_argument('--decay_epochs', default=3, type = int, 
+                        help = """
+                        Frequency of Learning Rate Decay in Step Scheduler
+                        """)
     parser.add_argument("--momentum", 
                         default=0, 
                         type = float, 
