@@ -1,5 +1,5 @@
 import argparse
-from sagemaker.tuner import HyperparameterTuner, ContinuousParameter, CategoricalParameter
+from sagemaker.tuner import HyperparameterTuner, ContinuousParameter, CategoricalParameter, IntegerParameter
 from sagemaker.pytorch import PyTorch
 from config import role, region
 import os, json
@@ -36,6 +36,55 @@ def parse_args():
     parser.add_argument("--max_wait", type=int, default=3600, help="Maximum wait time (in seconds) for spot instances.")
     return parser.parse_args()
 
+
+def create_parameter(config):
+    """
+    Convert a parameter configuration into SageMaker-compatible hyperparameter ranges.
+    """
+    param_type = config["type"]
+    if param_type == "Continuous":
+        return ContinuousParameter(
+            config["range"][0], 
+            config["range"][1], 
+            scaling_type=config.get("scale", "Linear")
+            )
+    elif param_type == "Categorical":
+        return CategoricalParameter(config["values"])
+    elif param_type == "Integer":
+        return IntegerParameter(config["range"][0], config["range"][1])
+    else:
+        raise ValueError(f"Unsupported parameter type: {param_type}")
+    
+def get_hyperparameter_ranges(config, loss_function):
+    """
+    Extract hyperparameter ranges based on the loss function and optimizer.
+    """
+    hyperparameter_ranges = {}
+    print(config.keys())
+    # Add common optimizer ranges
+    for param, param_config in config["Optimizer"].items():
+        hyperparameter_ranges[param] = create_parameter(param_config)
+
+    # Add scheduler ranges
+    for param, param_config in config['scheduler'].items():
+        hyperparameter_ranges[param] = create_parameter(param_config)
+
+    # Add common loss-specific ranges
+    for param, param_config in config["loss_specific"]["common"].items():
+        hyperparameter_ranges[param] = create_parameter(param_config)
+
+    # Add ranges specific to the selected loss function
+    if loss_function in config["loss_specific"]:
+        for param, param_config in config["loss_specific"][loss_function].items():
+            hyperparameter_ranges[param] = create_parameter(param_config)
+
+    # Add model-specific ranges
+    for param, param_config in config["model_specific"].items():
+        hyperparameter_ranges[param] = create_parameter(param_config)
+
+    return hyperparameter_ranges
+
+
 def create_estimator(args, hyperparameters):
     spot_config = {
         "use_spot_instances": args.use_spot,
@@ -66,26 +115,29 @@ def create_estimator(args, hyperparameters):
     return estimator
 
 
-def run_tuning_job(args, train_frac, max_jobs, max_parallel_jobs, epochs):
+def run_tuning_job(
+        args, 
+        train_frac, 
+        max_jobs, 
+        max_parallel_jobs, 
+        epochs,
+        loss_function, 
+        optimizer
+        ):
     with open(args.config_file, "r") as f:
-        hyperparameters = json.load(f)
+        config = json.load(f)
+
+    # Add static hyperparameters
+    hyperparameters = config["non-tunable"]
     hyperparameters["epochs"] = epochs
     hyperparameters["train_frac"] = train_frac
+    hyperparameters["loss_function"] = loss_function
+    hyperparameters["optimizer"] = optimizer
+
+    # Create hyperparameter ranges dynamically based on loss and optimizer
+    hyperparameter_ranges = get_hyperparameter_ranges(config, loss_function)
 
     estimator = create_estimator(args, hyperparameters)
-
-    hyperparameter_ranges = {
-        "loss_function": CategoricalParameter([
-            "sogclr", 
-            "isogclr_new_v2", 
-            "isogclr_new"
-        ]),
-        "optimizer": CategoricalParameter([
-            "adamw", 
-            "radam",             
-            "fusedlamb"
-        ]),
-    }
 
     tuner = HyperparameterTuner(
         estimator=estimator,
@@ -106,14 +158,23 @@ def run_tuning_job(args, train_frac, max_jobs, max_parallel_jobs, epochs):
 
 def main():
     args = parse_args()
+    combinations = [
+        ("isogclr_new", "radam"),
+        # ("isogclr_new", "adamw"),
+        # ("sogclr", "adamw"), 
+        # ("sogclr", "radam")
 
-    run_tuning_job(
-        args=args,
-        train_frac=1,
-        max_jobs=9,
-        max_parallel_jobs=9,
-        epochs=15
-    )
+    ]
+    for loss_function, optimizer in combinations:
+        run_tuning_job(
+            args=args,
+            train_frac=1,
+            max_jobs=30,
+            max_parallel_jobs=3,
+            epochs=30,
+            loss_function=loss_function,
+            optimizer=optimizer
+        )
 
 if __name__ == "__main__":
     main()
