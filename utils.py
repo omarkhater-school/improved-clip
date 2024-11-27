@@ -11,6 +11,7 @@ from pathlib import Path
 import json 
 import warnings
 import random
+import boto3
 
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a
@@ -282,3 +283,35 @@ def set_path(args):
     json.dump(args.__dict__, open(os.path.join(args.output_dir, 'args.json'), 'w'), indent=2) 
 
     return args
+
+
+def save_check_point(epoch, model_without_ddp, optimizer, lr_scheduler, args):
+    # Save checkpoint after every epoch
+    save_obj = {
+        'model': model_without_ddp.state_dict(),
+        'optimizer': optimizer.state_dict(),
+        'lr_scheduler': lr_scheduler.state_dict(),
+        'args': vars(args),
+        'epoch': epoch,
+    }
+    checkpoint_path = os.path.join(args.output_dir, f'checkpoint_{epoch + 1}.pth')
+
+    if "SM_OUTPUT_DATA_DIR" in os.environ: 
+        try:
+            # upload the checkpoint to s3 directly
+            local_checkpoint_path = os.path.join("/opt/ml/checkpoints", f'checkpoint_{epoch + 1}.pth')
+            if not os.path.exists("/opt/ml/checkpoints"):
+                os.makedirs("/opt/ml/checkpoints")
+            torch.save(save_obj, local_checkpoint_path)
+            s3_path = os.path.join(os.environ["SM_OUTPUT_DATA_DIR"], f'checkpoint_{epoch + 1}.pth')
+            s3 = boto3.client('s3')
+            bucket, key_prefix = s3_path.replace("s3://", "").split("/", 1)
+            s3.upload_file(local_checkpoint_path, bucket, key_prefix)
+        except Exception as e: 
+            # save locally instead in the output folder that uploaded to s3 at the end
+            print(f"Could not upload checkpoint to s3 due to:\n{e}")
+            torch.save(save_obj, checkpoint_path)
+    else:
+        torch.save(save_obj, checkpoint_path)
+
+    return 

@@ -247,6 +247,8 @@ def train_model(
                 print(f"Failed to save tau values due to: \n{e}")
 
         # Save checkpoint after every epoch
+        
+        utils.save_check_point(epoch, model_without_ddp, optimizer, lr_scheduler, args)
         save_obj = {
             'model': model_without_ddp.state_dict(),
             'optimizer': optimizer.state_dict(),
@@ -327,5 +329,4 @@ def extract_and_save_sample_tau(train_loader, model, tokenizer, args):
         with open(os.path.join(args.output_dir, "tau.pkl"), "wb") as f:
             pickle.dump({"tau_image":image_tau_array, "tau_text":text_tau_array}, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-        assert 0
 # %%

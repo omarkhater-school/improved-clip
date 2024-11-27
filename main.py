@@ -56,6 +56,7 @@ def run_pipeline(args):
         rho_I=args.rho_I, 
         rho_T=args.rho_T, 
         tau_init=args.tau_init,
+        rho_init=args.rho_init,
         eta_init=args.eta_init, 
         beta_u=args.beta_u, 
         temp=args.temp, 
@@ -75,8 +76,6 @@ def run_pipeline(args):
         args.start_epoch = start_epoch
     else:
         args.start_epoch = 0
-
-    # extract_and_save_sample_tau(train_loader, model, tokenizer, args)
 
     ## Training
     optimizer = create_optimizer(args, model)
@@ -118,20 +117,17 @@ if __name__ == '__main__':
     parser.add_argument('--ann_path', default='./clip_train')
     parser.add_argument('--train_file', default='downstream/cc3m_train_new.json')
     parser.add_argument('--train_image_root', default='cc3m')
-
     # model config
     parser.add_argument('--bert_config', default='configs/config_bert.json')
     parser.add_argument('--image_encoder', default='resnet50')
     parser.add_argument('--text_encoder', default='distilbert-base-uncased')
     parser.add_argument('--image_res', default=256, type=int)
-    parser.add_argument('--vision_width', default=768, type=int)
     parser.add_argument('--embed_dim', default=256, type=int)
 
     # optimizer and schedular
     parser.add_argument('--optimizer', default='adamW')
     parser.add_argument('--sched', default='cosine')
     parser.add_argument('--lr', default=2e-4, type=float)
-    parser.add_argument('--lr_temp_net', default=1e-6, type=float)
     parser.add_argument('--wd_temp_net', 
                         default=1e-3, 
                         type=float,
@@ -150,11 +146,9 @@ if __name__ == '__main__':
                         help="For RMSProp like optimizers")
 
     # training & test settings
-    parser.add_argument('--use_amp', type = ast.literal_eval, default= True)
     parser.add_argument('--init_model', type = ast.literal_eval, default= True)
     parser.add_argument('--batch_size_train', default=128, type=int)
     parser.add_argument('--batch_size_test', default=128, type=int)
-    parser.add_argument('--k_test', default=256, type=int)
     parser.add_argument('--evaluate', type = ast.literal_eval, default= False)
     parser.add_argument("--val_frequency", type = int, default=2)
     parser.add_argument('--checkpoint', default='', type=str)
@@ -192,27 +186,18 @@ if __name__ == '__main__':
     parser.add_argument('--rho_T', default=8.0, type=float)
     parser.add_argument('--eta_init', default=0.001, type=float)
     parser.add_argument('--tau_init', default=0.01, type=float)
+    parser.add_argument("--rho_init", default = 6, type = float)
     parser.add_argument('--beta_u', default=0.9, type=float)
     parser.add_argument('--temp', default=0.01, type=float)
     parser.add_argument('--learnable_temp', type = ast.literal_eval, default= True)
     parser.add_argument('--personalized_tau', type = ast.literal_eval, default= True)
-    parser.add_argument('--max_norm', default=1.0, type=float)
     parser.add_argument('--store_tau', type = ast.literal_eval, default= True)
     parser.add_argument('--isogclr_temp_net', type = ast.literal_eval, default= True)
     parser.add_argument('--alpha', default=1.0, type=float, help='for isogclr_denoise')
-
     parser.add_argument('--train_frac', 
                         help="fraction of data used for training",
                         default=1.0, 
                         type=float)
-    parser.add_argument('--check_samples_tau', 
-                        help = "check samples with high/low temperature values",
-                        type = ast.literal_eval, 
-                        default= True)
-    parser.add_argument('--extract_data', 
-                        help = "extract data from the cc3m dataset", 
-                        type = ast.literal_eval, 
-                        default= True)
     parser.add_argument('--zs_dataset', 
                         help = "zero-shot transfer", 
                         default="imagenet", 
@@ -225,9 +210,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-
-    if args.check_samples_tau:
-        args.evaluate = True
     args = set_path(args)
 
 
