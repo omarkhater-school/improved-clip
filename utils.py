@@ -303,10 +303,8 @@ def save_check_point(epoch, model_without_ddp, optimizer, lr_scheduler, args):
             if not os.path.exists("/opt/ml/checkpoints"):
                 os.makedirs("/opt/ml/checkpoints")
             torch.save(save_obj, local_checkpoint_path)
-            s3_path = os.path.join(os.environ["SM_OUTPUT_DATA_DIR"], f'checkpoint_{epoch + 1}.pth')
             s3 = boto3.client('s3')
-            bucket, key_prefix = s3_path.replace("s3://", "").split("/", 1)
-            s3.upload_file(local_checkpoint_path, bucket, key_prefix)
+            s3.upload_file(local_checkpoint_path, "competitions23", f"{args.s3_checkpoint_prefix}/checkpoint_{epoch + 1}.pth")
         except Exception as e: 
             # save locally instead in the output folder that uploaded to s3 at the end
             print(f"Could not upload checkpoint to s3 due to:\n{e}")

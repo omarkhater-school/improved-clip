@@ -46,7 +46,7 @@ def prepare_output_path(args):
     if "SM_OUTPUT_DATA_DIR" in os.environ:  # Check if running in SageMaker
         root_output_path = os.environ["SM_OUTPUT_DATA_DIR"]
     else:  # Local environment
-        root_output_path = os.path.join(args.data_path, "outputs")
+        root_output_path = args.output_dir
 
     # Ensure the directory exists
     if not os.path.exists(root_output_path):

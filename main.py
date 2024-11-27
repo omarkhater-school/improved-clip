@@ -168,8 +168,10 @@ if __name__ == '__main__':
     parser.add_argument("--step_size_per_epoch", default =100, type=int)
     parser.add_argument("--print_freq_per_epoch", default = 100, type = int)
     parser.add_argument("--resume_learning", default = False, type = ast.literal_eval)
+    parser.add_argument('--k_test', default=256, type=int)
     # output path
     parser.add_argument('--output_dir', default='./output/clip_test')  
+    parser.add_argument('--s3_checkpoint_prefix', default="CSCE636_DL_project/phase3_checkpoints/")
 
     # loss config
     parser.add_argument('--loss_function', 

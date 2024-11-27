@@ -63,6 +63,7 @@
     "dist_url": "env://",
     "distributed": 0,
     "step_size_per_epoch": 50,
-    "print_freq_per_epoch": 100
+    "print_freq_per_epoch": 100,
+    "s3_checkpoint_prefix": "CSCE636_DL_project/phase3_checkpoints"
   }
 }
