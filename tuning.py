@@ -34,7 +34,6 @@ def parse_args():
     parser.add_argument("--config_file", required=True, help="Path to JSON configuration file for the hyper-parameters.")
     parser.add_argument("--use_spot", action="store_true", help="Use spot instances for cost savings.")
     parser.add_argument("--max_wait", type=int, default=3600, help="Maximum wait time (in seconds) for spot instances.")
-    parser.add_argument("--exp_name", type=str, default="Deafult_exp", help="S3 subfolder under the s3_prefix found in the config file")
     return parser.parse_args()
 
 
@@ -134,7 +133,6 @@ def run_tuning_job(
     hyperparameters["train_frac"] = train_frac
     hyperparameters["loss_function"] = loss_function
     hyperparameters["optimizer"] = optimizer
-    hyperparameters["s3_checkpoint_prefix"] = f'{hyperparameters["s3_checkpoint_prefix"]}/{args.exp_name}'
 
     # Create hyperparameter ranges dynamically based on loss and optimizer
     hyperparameter_ranges = get_hyperparameter_ranges(config, loss_function)

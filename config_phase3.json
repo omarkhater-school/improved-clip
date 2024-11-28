@@ -1,12 +1,11 @@
 {
   "Optimizer": {
-    "optimizer": {"type": "Categorical", "values": ["adamW","radam", "fusedlamb"]}, 
     "lr": {"type": "Continuous", "scale": "Logarithmic", "range": [0.0001, 0.01]},
     "weight_decay": {"type": "Continuous", "scale": "Logarithmic", "range": [1e-6, 0.01]},
     "wd_temp_net": {"type": "Continuous", "scale": "Logarithmic", "range": [1e-6, 0.01]}
   },
   "scheduler": {
-    "sched": {"type": "Categorical", "values": ["cosine","tanh", "step", "plateau"]},
+    "sched": {"type": "Categorical", "values": ["cosine","tanh"]},
     "min_lr": {"type": "Continuous", "scale": "Logarithmic", "range": [1e-7, 1e-5]},
     "warmup": {"type": "Categorical", "values": [1,0]}, 
     "warmup_epochs": {"type": "Integer", "scale": "Linear", "range": [0, 5]},
@@ -16,7 +15,6 @@
   },
   "loss_specific": {
     "common": {
-        "loss_function": {"type": "Categorical", "values": ["isogclr_new","sogclr", "isogclr_new_v2"]}, 
         "sogclr_gamma": {"type": "Continuous", "scale": "Linear", "range": [0.5, 1.0]},
         "learnable_temp": {"type": "Categorical", "values": [1,0]},
         "temp": {"type": "Continuous", "scale": "Logarithmic", "range": [0.01, 0.1]}, 
@@ -39,7 +37,7 @@
     }
   },
   "model_specific": {
-    "embed_dim": {"type": "Integer", "scale": "Linear", "range": [128, 1024]}
+    "embed_dim": {"type": "Categorical", "values": [64, 128, 256, 512, 1024]}
   }, 
   "non-tunable": {
     "data_path": "/opt/ml/input/data/train/", 
@@ -64,6 +62,7 @@
     "distributed": 0,
     "step_size_per_epoch": 50,
     "print_freq_per_epoch": 100,
-    "s3_checkpoint_prefix": "CSCE636_DL_project/phase3_checkpoints"
+    "use_amp": 1,
+    "store_tau": 0
   }
 }

@@ -152,7 +152,7 @@ if __name__ == '__main__':
                         type = float, 
                         help="For RMSProp like optimizers")
 
-    # training & test settings
+    # training & test settings 
     parser.add_argument('--init_model', type = ast.literal_eval, default= True)
     parser.add_argument('--batch_size_train', default=128, type=int)
     parser.add_argument('--batch_size_test', default=128, type=int)
@@ -171,7 +171,6 @@ if __name__ == '__main__':
     parser.add_argument('--k_test', default=256, type=int)
     # output path
     parser.add_argument('--output_dir', default='./output/clip_test')  
-    parser.add_argument('--s3_checkpoint_prefix', default="CSCE636_DL_project/phase3_checkpoints/")
 
     # loss config
     parser.add_argument('--loss_function', 
