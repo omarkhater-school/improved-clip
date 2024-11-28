@@ -1,0 +1,68 @@
+{
+  "Optimizer": {
+    "lr": {"type": "Continuous", "scale": "Logarithmic", "range": [0.0001, 0.01]},
+    "weight_decay": {"type": "Continuous", "scale": "Logarithmic", "range": [1e-6, 0.01]},
+    "wd_temp_net": {"type": "Continuous", "scale": "Logarithmic", "range": [1e-6, 0.01]}
+  },
+  "scheduler": {
+    "sched": {"type": "Categorical", "values": ["cosine","tanh"]},
+    "min_lr": {"type": "Continuous", "scale": "Logarithmic", "range": [1e-7, 1e-5]},
+    "warmup": {"type": "Categorical", "values": [1,0]}, 
+    "warmup_epochs": {"type": "Integer", "scale": "Linear", "range": [0, 5]},
+    "cooldown_epochs": {"type": "Integer", "scale": "Linear", "range": [0, 5]}, 
+    "warmup_lr": {"type": "Continuous", "scale": "Logarithmic", "range": [1e-5, 1e-3]},
+    "decay_rate": {"type": "Continuous", "scale": "Linear", "range": [0.5, 1]}
+  },
+  "loss_specific": {
+    "common": {
+        "sogclr_gamma": {"type": "Continuous", "scale": "Linear", "range": [0.5, 1.0]},
+        "learnable_temp": {"type": "Categorical", "values": [1,0]},
+        "temp": {"type": "Continuous", "scale": "Logarithmic", "range": [0.01, 0.1]}, 
+        "personalized_tau": {"type": "Categorical", "values": [1,0]}
+    }, 
+    "sogclr": 
+        {
+        },
+    "isogclr_new_v2": {
+        "rho_init": {"type": "Continuous", "scale": "Linear", "range": [0.01, 0.1]},
+        "tau_init": {"type": "Continuous", "scale": "Linear", "range": [0.01, 0.1]},
+        "eta_init": {"type": "Continuous", "scale": "Logarithmic", "range": [1e-5, 0.01]},
+        "beta_u": {"type": "Continuous", "scale": "Linear", "range": [0.8, 0.999]}
+    },
+    "isogclr_new": {
+        "rho_I": {"type": "Continuous", "scale": "Linear", "range": [1, 10]},
+        "rho_T": {"type": "Continuous", "scale": "Linear", "range": [1, 10]},
+        "tau_init": {"type": "Continuous", "scale": "Linear", "range": [0.01, 0.1]}
+    }
+  },
+  "model_specific": {
+    "embed_dim": {"type": "Categorical", "values": [64, 128, 256, 512, 1024]}
+  }, 
+  "non-tunable": {
+    "data_path": "/opt/ml/input/data/train/", 
+    "ann_path" : "/opt/ml/input/data/train/clip_train",
+    "train_file": "cc3m_train_subset.json",
+    "train_image_root": "cc3m_subset_100k",
+    "zs_dataset": "imagenet",
+    "zs_datafolder": "/opt/ml/input/data/train/imagenet/val",
+    "train_frac": 1,
+    "val_frequency": 1, 
+    "image_res": 256,
+    "epochs": 30, 
+    "init_model": 1,
+    "batch_size_train": 128,
+    "batch_size_test": 128,
+    "evaluate": 0,
+    "resume_learning": 0,
+    "device": "cuda",
+    "seed": 42,
+    "world_size": 1,
+    "dist_url": "env://",
+    "distributed": 0,
+    "step_size_per_epoch": 50,
+    "print_freq_per_epoch": 100,
+    "use_amp": 1,
+    "store_tau": 0,
+    "isogclr_temp_net": 0
+  }
+}

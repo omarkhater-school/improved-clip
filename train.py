@@ -226,13 +226,15 @@ def train_model(
             objective_values_epochs.append(epoch + 1)
             objective_value = get_objective_value(val_result, zeroshot_results)
             objective_values.append(objective_value)
+            moving_avg_objective_value = sum(objective_values[-5:]) / len(objective_values[-5:])
             print(
                 f"""
                   Validation Epoch: {epoch + 1}
                   Validation txt_r1: {val_result.get("txt_r1")}
                   Validation img_r1: {val_result.get("img_r1")}
                   Validation zeroshot_top1: {zeroshot_results.get("zeroshot_top1")}
-                  objective value: {objective_value}
+                  objective value: {objective_value},
+                  Moving Avg Objective value: {moving_avg_objective_value}
                 """
                 )
         # Save tau values every 10 epochs (if requested)

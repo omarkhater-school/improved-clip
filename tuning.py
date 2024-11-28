@@ -22,7 +22,8 @@ METRICS = [
             {"Name": "BestObjectiveValue", "Regex": "Best Objective value ([0-9\\.]+)"},
             {"Name": "ValidationTxtR1", "Regex": "Validation txt_r1: ([0-9\\.]+)"},
             {"Name": "ValidationImgR1", "Regex": "Validation img_r1: ([0-9\\.]+)"},
-            {"Name": "ValidationZS1", "Regex": "Validation zeroshot_top1: ([0-9\\.]+)"}
+            {"Name": "ValidationZS1", "Regex": "Validation zeroshot_top1: ([0-9\\.]+)"},
+            {"Name": "MovingAvgObjectiveValue", "Regex": "Moving Avg Objective value: ([0-9\\.]+)"}
         ]
 
 def parse_args():
