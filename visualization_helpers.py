@@ -141,6 +141,7 @@ def plot_relative_importance(df,
                              metric_column="FinalObjectiveValue", 
                              features=None, 
                              bar_height=0.2, 
+                             importance_threshold=2,
                              figtitle="Relative Importance of Hyperparameters", 
                              output_dir=".", 
                              filename="relative_importance.png"):
@@ -160,14 +161,22 @@ def plot_relative_importance(df,
     # Calculate feature importance
     importance_df = calculate_feature_importance(df, metric_column, features)
 
-    # Dynamically adjust the figure height
-    num_features = len(importance_df)
-    fig_height = max(5,  num_features)  # Minimum height of 3 inches
-
-    if num_features < 7:
-        fig_width = 10
+    # Split into above and below threshold
+    above_threshold = importance_df[importance_df["Importance (%)"] >= importance_threshold]
+    below_threshold = importance_df[importance_df["Importance (%)"] < importance_threshold]
+    # Add "Others" row for below threshold features
+    if not below_threshold.empty:
+        others_importance = below_threshold["Importance (%)"].sum()
+        others_row = pd.DataFrame({"Feature": ["Others"], "Importance (%)": [others_importance]})
+        truncated_features = below_threshold["Feature"].tolist()
+        importance_df = pd.concat([above_threshold, others_row], ignore_index=True)
     else:
-        fig_width = 20
+        truncated_features = []
+
+    # Dynamically adjust the figure height
+    num_features = len(above_threshold)
+    fig_height = max(5, num_features)  # Minimum height of 3 inches
+    fig_width = 10
 
     # Plot relative importance as a horizontal bar plot
     plt.figure(figsize=(fig_width, fig_height))
@@ -177,7 +186,7 @@ def plot_relative_importance(df,
         data=importance_df,
         orient="h"
     )
-    plt.suptitle(figtitle)
+    plt.suptitle(figtitle, fontsize = 16)
     plt.xlabel("Relative Importance (%)")
     plt.ylabel("Hyperparameters")
     plt.grid(axis="x", linestyle="--", alpha=0.7)  # Add gridlines for x-axis
@@ -191,17 +200,34 @@ def plot_relative_importance(df,
                 width, 
                 y, 
                 f"{width:.2f}%",
-                ha='left', 
-                va='center', 
+                ha="left", 
+                va="center", 
                 color="red", 
                 fontsize=13
-                )
+            )
 
+    # Add a text box for "Others"
+    if truncated_features:
+        # Create two columns of truncated features
+        truncated_text = "\n".join([
+            f"{truncated_features[i]:<20}{truncated_features[i+1]:<20}" if i+1 < len(truncated_features) 
+            else f"{truncated_features[i]}"
+            for i in range(0, len(truncated_features), 2)
+        ])
 
-    # plt.tight_layout()
+        # Add the text box
+        plt.gcf().text(
+            .95, 
+            0.5,
+            f"Features grouped as 'Others':\n{truncated_text}", 
+            ha="left", 
+            va="center", 
+            bbox=dict(boxstyle="round", facecolor="lightgrey", edgecolor="black")
+        )
 
     # Save and display the plot
     save_and_show_plot(plt.gcf(), output_dir, filename)
+
 
 
 
@@ -255,3 +281,77 @@ def visualize_phase(df, filtered_df, phase_number, output_dir="."):
         output_dir=phase_dir,
         filename=f"relative_importance_phase_{phase_number}.png"
     )
+
+
+def plot_metrics_with_best_epoch(
+    metric_dataframes, 
+    metrics_to_plot=["ValidationTxtR1", "ValidationImgR1", "ValidationZS1"], 
+    objective_metric="ObjectiveValue",
+    best_epoch_line=True,
+    figsize=(15, 5)
+):
+    """
+    Plot multiple metrics with an indication of the best epoch.
+
+    Parameters:
+    - metric_dataframes (dict): Dictionary of DataFrames for each metric.
+    - metrics_to_plot (list): List of metrics to plot.
+    - objective_metric (str): Name of the objective metric.
+    - best_epoch_line (bool): Whether to add vertical and horizontal lines for the best epoch.
+    - figsize (tuple): Size of the figure.
+    """
+    plt.figure(figsize=figsize)
+
+    # Plot each metric with dashed lines
+    for metric in metrics_to_plot:
+        plt.plot(
+            metric_dataframes[metric].index,
+            metric_dataframes[metric]['value'],
+            label=metric,
+            linestyle='--'
+        )
+
+    # Plot the objective metric with a solid line
+    plt.plot(
+        metric_dataframes[objective_metric].index,
+        metric_dataframes[objective_metric]['value'],
+        label=f"{objective_metric} (Average)",
+        linewidth=2
+    )
+
+    # Add vertical and horizontal lines for the best epoch
+    if best_epoch_line:
+        # Find the best epoch based on the maximum value of the objective metric
+        best_epoch_idx = metric_dataframes[objective_metric]['value'].idxmax()
+        best_epoch_value = metric_dataframes[objective_metric].loc[best_epoch_idx, 'value']
+
+        # Add vertical line for the best epoch
+        plt.axvline(
+            x=best_epoch_idx, 
+            color='red', 
+            linestyle='-.', 
+            label=f'Best Epoch: {best_epoch_idx}'
+        )
+
+        # Add horizontal line for the best objective value
+        plt.axhline(
+            y=best_epoch_value, 
+            color='green', 
+            linestyle='-.', 
+            label=f'Best Value: {best_epoch_value:.2f}'
+        )
+
+    # Add labels, title, and grid
+    plt.xlabel('Epoch')
+    plt.ylabel('Metric Value')
+    plt.title('Validation Metrics During Training')
+    plt.grid(True)
+
+    # Add legend outside the plot area
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
+
+    # Adjust layout to make space for the legend
+    plt.tight_layout()
+
+    # Show the plot
+    plt.show()

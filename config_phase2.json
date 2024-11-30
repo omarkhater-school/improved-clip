@@ -2,7 +2,7 @@
     "ann_path" : "/opt/ml/input/data/train/clip_train",
     "train_file": "cc3m_train_subset.json",
     "train_image_root": "cc3m_subset_100k",
-    "train_frac": 0.02,
+    "train_frac": 1,
     "val_frequency": 2,
     "image_res": 256,
     "vision_width": 768,
