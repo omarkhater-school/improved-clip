@@ -111,3 +111,14 @@ This repository extends the original provided codebase with several enhancements
 ---
 - isogclr_new_v1 didn't work with existing code
 - `isogclr_temp_net=1` break the training  
+
+## Citation
+---
+If you use this work, please cite it as follows:
+```
+@misc{yourname2024improvedclip,
+  author       = {Omar Khater},
+  title        = {Improving CLIP Training with Bayesian Optimization},
+  year         = {2024},
+  url          = {[https://github.com/your-username/improved-clip](https://github.com/omarkhater-school/improved-clip)},
+```
