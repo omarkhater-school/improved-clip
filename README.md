@@ -48,8 +48,15 @@ This repository extends the original provided codebase with several enhancements
    
   ```bash
     pip install -r requirements.txt
+  ``` 
+3. Create `config.py` with the following: 
+  ```python
+  role = <Your Sagemaker role>
+  region = <Your AWS region>
+  aws_access_key_id = <Your acess key id>
+  aws_secret_access_key = <Your secret acess key>
   ```
-3. Test Run the main script
+4. Test Run the main script
    
   ```bash
   python main.py \
