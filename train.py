@@ -84,7 +84,7 @@ def train_one_epoch(
         
         
 
-        if args.ita_type in ['sogclr_dro', 'isogclr_new']:
+        if args.loss_function in ['sogclr_dro', 'isogclr_new']:
             metric_logger.update(avg_image_tau=info_dict['avg_image_tau'])
             metric_logger.update(avg_text_tau=info_dict['avg_text_tau'])
             metric_logger.update(cur_eta=info_dict['cur_eta'])
@@ -96,7 +96,7 @@ def train_one_epoch(
             metric_logger.update(weights_text_pos=0.0)
             metric_logger.update(v=0.0)
             metric_logger.update(lamda=0.0)
-        elif args.ita_type == 'isogclr_new_v2':
+        elif args.loss_function == 'isogclr_new_v2':
             metric_logger.update(avg_image_tau=info_dict['avg_image_tau'])
             metric_logger.update(avg_text_tau=info_dict['avg_text_tau'])
             metric_logger.update(cur_eta=info_dict['cur_eta'])
@@ -108,7 +108,7 @@ def train_one_epoch(
             metric_logger.update(weights_text_pos=0.0)
             metric_logger.update(v=info_dict['v'])
             metric_logger.update(lamda=info_dict['lamda'])
-        elif args.ita_type == 'sogclr':
+        elif args.loss_function == 'sogclr':
             metric_logger.update(avg_image_tau=info_dict['avg_image_tau'])
             metric_logger.update(avg_text_tau=info_dict['avg_text_tau'])
             metric_logger.update(weights_image_pos=0.0)
@@ -144,11 +144,27 @@ def train_one_epoch(
             )
         if epoch==0 and i%step_size==0 and i<=warmup_iterations and scheduler is not None: 
             scheduler.step(i//step_size)
+
+        print(f"""
+              Iteration {i + 1}, 
+              Epoch {epoch + 1}, 
+              Iteration Loss: {loss_ita.item():.4f}
+            """)
     progress_bar.close()
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
-    print("Averaged stats:", metric_logger.global_avg())
-    train_stats =  {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}   
+    # print("Averaged stats:", metric_logger.global_avg())
+    train_stats =  {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}  
+
+    print(f"""
+          Epoch {epoch + 1}
+          Average Epoch Loss: {metric_logger.meters['loss_ita'].global_avg}
+          Average Image Tau: {metric_logger.meters['avg_image_tau'].global_avg}
+          Average Text Tau: {metric_logger.meters['avg_text_tau'].global_avg}, 
+          Average Grad Tau Image: {metric_logger.meters['grad_tau_image'].global_avg}
+          Average Grad Tau Text: {metric_logger.meters['grad_tau_text'].global_avg}
+        """)
+
     return model, train_stats
 
 
@@ -181,7 +197,8 @@ def train_model(
     max_epoch = args.epochs
     warmup_steps = args.warmup_epochs
     start_time = time.time()
-
+    objective_values_epochs = []
+    objective_values = []
     for epoch in range(start_epoch, max_epoch):
         # Update sampler for distributed training
         if args.distributed:
@@ -206,17 +223,34 @@ def train_model(
         if (epoch + 1) % args.val_frequency == 0:
             print(f"\n*** Evaluation at Epoch {epoch + 1} ***\n")
             val_result, zeroshot_results = evaluate_model(val_loader, model_without_ddp, tokenizer, args, zeroshot_dataloader)
+            objective_values_epochs.append(epoch + 1)
             objective_value = get_objective_value(val_result, zeroshot_results)
-            print("objective value: {objective_value}")
+            objective_values.append(objective_value)
+            moving_avg_objective_value = sum(objective_values[-5:]) / len(objective_values[-5:])
+            print(
+                f"""
+                  Validation Epoch: {epoch + 1}
+                  Validation txt_r1: {val_result.get("txt_r1")}
+                  Validation img_r1: {val_result.get("img_r1")}
+                  Validation zeroshot_top1: {zeroshot_results.get("zeroshot_top1")}
+                  objective value: {objective_value},
+                  Moving Avg Objective value: {moving_avg_objective_value}
+                """
+                )
         # Save tau values every 10 epochs (if requested)
         if args.store_tau and (epoch + 1) % 10 == 0:
-            print("Saving tau values...")
-            tau_image = model_without_ddp.criterion.tau_I.clone().cpu().numpy()
-            tau_text = model_without_ddp.criterion.tau_T.clone().cpu().numpy()
-            with open(os.path.join(args.output_dir, f"tau_{epoch + 1}.pkl"), "wb") as f:
-                pickle.dump({"tau_image": tau_image, "tau_text": tau_text}, f, protocol=pickle.HIGHEST_PROTOCOL)
+            try:
+                print("Saving tau values...")
+                tau_image = model_without_ddp.criterion.tau_I.clone().cpu().numpy()
+                tau_text = model_without_ddp.criterion.tau_T.clone().cpu().numpy()
+                with open(os.path.join(args.output_dir, f"tau_{epoch + 1}.pkl"), "wb") as f:
+                    pickle.dump({"tau_image": tau_image, "tau_text": tau_text}, f, protocol=pickle.HIGHEST_PROTOCOL)
+            except Exception as e:
+                print(f"Failed to save tau values due to: \n{e}")
 
         # Save checkpoint after every epoch
+        
+        utils.save_check_point(epoch, model_without_ddp, optimizer, lr_scheduler, args)
         save_obj = {
             'model': model_without_ddp.state_dict(),
             'optimizer': optimizer.state_dict(),
@@ -238,26 +272,34 @@ def train_model(
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print(f'Training time: {total_time_str}')
+    best_objective_value = max(objective_values)
+    best_objective_value_index = objective_values.index(best_objective_value)
+    best_eval_epoch = objective_values_epochs[best_objective_value_index]
+    print(f"Best Objective value {best_objective_value} found at epoch: {best_eval_epoch}")
     
     return model_without_ddp
 
 def load_model_from_checkpoint(model, args):
     import re
-    if args.evaluate or args.ita_type == 'isogclr_denoise':
-        assert len(args.checkpoint) > 0
-        checkpoint = torch.load(args.checkpoint, map_location='cpu') 
-        state_dict = checkpoint['model']             
-        model.load_state_dict(state_dict, strict=False)  
-        print('load checkpoint from %s' % args.checkpoint)
-        match = re.search(r'checkpoint_(\d+)\.pth', args.checkpoint)
-        if match:
-            start_epoch = int(match.group(1))
-        else:
+    if args.resume_learning:
+        try:
+            checkpoint = torch.load(args.checkpoint, map_location='cpu') 
+            state_dict = checkpoint['model']             
+            model.load_state_dict(state_dict, strict=False)  
+            print('load checkpoint from %s' % args.checkpoint)
+            match = re.search(r'checkpoint_(\d+)\.pth', args.checkpoint)
+            if match:
+                start_epoch = int(match.group(1))
+            else:
+                start_epoch = 0
+                print("No checkpoint found. Starting from 0")
+        except Exception as e:
+            print(f"Failed to load checkpoint due to \n{e}")
             start_epoch = 0
-            print("No checkpoint found. Starting from 0")
+            model = model
     else:
         start_epoch = 0
-        model = None
+        model = model
     return model, start_epoch
 
 def extract_and_save_sample_tau(train_loader, model, tokenizer, args):
@@ -289,4 +331,4 @@ def extract_and_save_sample_tau(train_loader, model, tokenizer, args):
         with open(os.path.join(args.output_dir, "tau.pkl"), "wb") as f:
             pickle.dump({"tau_image":image_tau_array, "tau_text":text_tau_array}, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-        assert 0
+# %%

@@ -11,6 +11,7 @@ from pathlib import Path
 import json 
 import warnings
 import random
+import boto3
 
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a
@@ -282,3 +283,47 @@ def set_path(args):
     json.dump(args.__dict__, open(os.path.join(args.output_dir, 'args.json'), 'w'), indent=2) 
 
     return args
+
+
+def save_check_point(epoch, model_without_ddp, optimizer, lr_scheduler, args):
+    # Save checkpoint after every epoch
+    save_obj = {
+        'model': model_without_ddp.state_dict(),
+        'optimizer': optimizer.state_dict(),
+        'lr_scheduler': lr_scheduler.state_dict(),
+        'args': vars(args),
+        'epoch': epoch,
+    }
+    checkpoint_file = f'checkpoint_{epoch + 1}.pth'
+    checkpoint_path = os.path.join(args.output_dir, checkpoint_file)
+
+    if "SM_OUTPUT_DATA_DIR" in os.environ and "SM_MODULE_DIR" in os.environ:
+        try:
+            # Parse the S3 prefix from SM_MODULE_DIR
+            sm_module_dir = os.environ["SM_MODULE_DIR"]
+            if sm_module_dir.startswith("s3://"):
+                bucket, key_prefix = sm_module_dir.replace("s3://", "").split("/", 1)
+                checkpoint_s3_prefix = f"{key_prefix.rsplit('/', 1)[0]}/checkpoints/{checkpoint_file}"
+                
+                # Save checkpoint locally
+                local_checkpoint_path = os.path.join("/opt/ml/checkpoints", checkpoint_file)
+                if not os.path.exists("/opt/ml/checkpoints"):
+                    os.makedirs("/opt/ml/checkpoints")
+                torch.save(save_obj, local_checkpoint_path)
+
+                # Upload to S3
+                s3 = boto3.client('s3')
+                s3.upload_file(local_checkpoint_path, bucket, checkpoint_s3_prefix)
+                print(f"Checkpoint saved to S3: s3://{bucket}/{checkpoint_s3_prefix}")
+            else:
+                raise ValueError(f"Invalid SM_MODULE_DIR: {sm_module_dir}")
+        except Exception as e:
+            # Fallback: save locally in the output directory
+            print(f"Could not upload checkpoint to S3 due to:\n{e}")
+            print(f"Saving locally to {checkpoint_path} instead")
+            torch.save(save_obj, checkpoint_path)
+    else:
+        # Local save for non-SageMaker environments
+        torch.save(save_obj, checkpoint_path)
+
+    return

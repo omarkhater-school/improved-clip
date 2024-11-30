@@ -138,6 +138,7 @@ class CLIP(nn.Module):
                 feature_dim=embed_dim
                 )
         else:
+            print(f"Loss function: {self.ita_type} is not yet implemented")
             raise NotImplementedError
 
 
@@ -251,7 +252,7 @@ class CLIP(nn.Module):
 
         return loss_ita, info_dict
 
-
+import torch.distributed as dist
 
 @torch.no_grad()
 def concat_all_gather(tensor):
@@ -259,6 +260,9 @@ def concat_all_gather(tensor):
     Performs all_gather operation on the provided tensors.
     *** Warning ***: torch.distributed.all_gather has no gradient.
     """
+    if not dist.is_initialized():
+        return tensor
+    
     tensors_gather = [torch.ones_like(tensor)
         for _ in range(torch.distributed.get_world_size())]
     torch.distributed.all_gather(tensors_gather, tensor, async_op=False)

@@ -19,20 +19,6 @@ def prepare_data_loaders(args):
     print("len of train_dataset:", len(train_dataset))
     print("len of validation dataset:", len(val_coco_dataset))
 
-
-    if args.extract_data:
-        idx_list = []
-        data_dir = os.path.join(args.output_dir, '')
-        Path(data_dir).mkdir(parents=True, exist_ok=True)
-
-        for idx in tqdm(idx_list):
-            image, text, _, _ = train_dataset.__getitem__(idx, enable_transform=False)
-            torchvision.utils.save_image(image, fp=os.path.join(data_dir, str(idx)+':'+text+'.png'))
-            
-        shutil.make_archive(data_dir, 'zip', data_dir)
-
-        assert 0
-
     num_training = int(args.train_frac * len(train_dataset))
     train_dataset = Subset(train_dataset, list(range(num_training)))
 
@@ -48,4 +34,33 @@ def prepare_data_loaders(args):
     val_coco_loader = create_val_loader([val_coco_dataset], samplers[1:2], 
                                         [args.batch_size_test], [8], [None])[0] 
 
-    return  train_loader, val_coco_loader              
+    return  train_loader, val_coco_loader  
+
+
+def prepare_output_path(args):
+    """
+    Prepare the output folder based on the environment.
+    - If running in SageMaker, use SageMaker's expected output directory.
+    - Otherwise, use a local path.
+    """
+    if "SM_OUTPUT_DATA_DIR" in os.environ:  # Check if running in SageMaker
+        root_output_path = os.environ["SM_OUTPUT_DATA_DIR"]
+    else:  # Local environment
+        root_output_path = args.output_dir
+
+    # Ensure the directory exists
+    if not os.path.exists(root_output_path):
+        os.makedirs(root_output_path)
+
+    args.output_dir = root_output_path
+    return args
+
+
+def manage_paths_and_environment(args):
+    """
+    Centralized method to manage paths and environment:
+    - Prepare data paths (including S3 downloads).
+    - Prepare output path based on the environment.
+    """
+    args = prepare_output_path(args)
+    return args
