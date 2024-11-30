@@ -13,7 +13,6 @@ This repository explores and optimizes global contrastive loss functions, focusi
 | iSogCLR\_New (Ours)| **15**       | **11.52**        | **28.54**          | **18.33**   |
 
 
-
 ## **Repository Structure**
 
 ### **Key Folders**
@@ -23,6 +22,7 @@ This repository explores and optimizes global contrastive loss functions, focusi
 - **`scheduler/`**: Learning rate schedulers for warmup, cooldown, and decay.  
 - **`zeroshot_transfer/`**: Evaluation scripts for zero-shot classification.  
 - **`documentation/`**: Contains the **project report** detailing the methodology, experiments, and results.
+- **`final_model/`**: Contains the final trained model for inference. 
 
 ---
 
