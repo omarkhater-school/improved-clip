@@ -127,5 +127,5 @@ If you use this work, please cite it as follows:
   author       = {Omar Khater},
   title        = {Improving CLIP Training with Bayesian Optimization},
   year         = {2024},
-  url          = {[https://github.com/your-username/improved-clip](https://github.com/omarkhater-school/improved-clip)},
+  url          = {https://github.com/omarkhater-school/improved-clip},
 ```
