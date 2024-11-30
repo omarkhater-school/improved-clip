@@ -49,7 +49,7 @@ This repository extends the original provided codebase with several enhancements
   ```bash
     pip install -r requirements.txt
   ``` 
-3. Create `config.py` with the following: 
+3. [Optional] If you want to use the sagemaker training, and tuning, make sure to create `config.py` with the following: 
   ```python
   role = <Your Sagemaker role>
   region = <Your AWS region>
