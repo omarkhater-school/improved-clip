@@ -123,7 +123,7 @@ This repository extends the original provided codebase with several enhancements
 ---
 If you use this work, please cite it as follows:
 ```
-@misc{yourname2024improvedclip,
+@misc{omarkhater2024improvedclip,
   author       = {Omar Khater},
   title        = {Improving CLIP Training with Bayesian Optimization},
   year         = {2024},
