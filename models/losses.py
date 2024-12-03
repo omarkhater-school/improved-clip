@@ -161,22 +161,32 @@ class SogCLR_Loss(nn.Module):
 
 # add some new features to iSogCLR
 class iSogCLR_New_Loss(nn.Module):
-    def __init__(self, N=2900000, gamma=0.8, tau_init=0.01, world_size=8, bsz=128, rho_I=8.0, rho_T=8.0,
-                       use_temp_net=True, feature_dim=256):  # use temperature network      
+    def __init__(
+            self, 
+            N=2900000, #   N is number of samples in training set
+            gamma=0.8, 
+            tau_init=0.01, 
+            world_size=8, 
+            bsz=128, 
+            rho_I=8.0, 
+            rho_T=8.0,
+            use_temp_net=True, 
+            feature_dim=256,
+            device = None
+            ):   
         
-        #Inputs:
-        #   N is number of samples in training set
         
+        self.device = device if device else torch.device("cuda" if torch.cuda.is_available() else "cpu")
         super(iSogCLR_New_Loss, self).__init__()
         self.world_size = world_size
-        self.s_I = torch.zeros(N).cuda()
-        self.s_T = torch.zeros(N).cuda()
-        self.b_I = torch.zeros(N).cuda()
-        self.b_T = torch.zeros(N).cuda()
+        self.s_I = torch.zeros(N, device=self.device)
+        self.s_T = torch.zeros(N, device=self.device)
+        self.b_I = torch.zeros(N, device=self.device)
+        self.b_T = torch.zeros(N, device=self.device)
         self.gamma = gamma
         self.eps = 1e-14
         self.bsz = bsz
-        self.mask_neg = (1.0 - torch.eye(bsz)).cuda()
+        self.mask_neg = (1.0 - torch.eye(bsz, device=self.device))
 
         self.tau_min, self.tau_max = 0.005, 0.05
 
@@ -188,15 +198,19 @@ class iSogCLR_New_Loss(nn.Module):
         self.eta_init = 1e-5  
 
         if self.use_temp_net:
-            self.image_temp_gen = TempGenerator(feature_dim=feature_dim, M=256, tau_min=self.tau_min, tau_max=self.tau_max).cuda()
-            self.text_temp_gen = TempGenerator(feature_dim=feature_dim, M=256, tau_min=self.tau_min, tau_max=self.tau_max).cuda()
+            self.image_temp_gen = TempGenerator(
+                feature_dim=feature_dim, M=256, tau_min=self.tau_min, tau_max=self.tau_max
+            ).to(self.device)
+            self.text_temp_gen = TempGenerator(
+                feature_dim=feature_dim, M=256, tau_min=self.tau_min, tau_max=self.tau_max
+            ).to(self.device)
         else:
             self.beta_u = 0.5
             self.grad_clip = 5.0
-            self.tau_I = torch.ones(N).cuda() * tau_init
-            self.tau_T = torch.ones(N).cuda() * tau_init
-            self.u_I = torch.zeros(N).cuda()
-            self.u_T = torch.zeros(N).cuda()
+            self.tau_I = torch.ones(N, device=self.device) * tau_init
+            self.tau_T = torch.ones(N, device=self.device) * tau_init
+            self.u_I = torch.zeros(N, device=self.device)
+            self.u_T = torch.zeros(N, device=self.device)
 
 
     def forward(self, image_features, text_features, image_ids, text_ids, epoch, max_epoch):

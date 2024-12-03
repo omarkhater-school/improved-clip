@@ -43,6 +43,7 @@ def run_pipeline(args):
         zeroshot_dataloader = None
 
     #### Model #### 
+
     print("***\nCreating model\n***")
     model = CLIP(
         image_encoder=args.image_encoder, 
@@ -68,32 +69,38 @@ def run_pipeline(args):
         alpha=args.alpha
     )
     model = model.to(device)
-
-    ## Resume learning (if applicable)
-    if args.resume_learning:
+    
+    if args.resume_learning or args.evaluate:
+        print(f"Loading model from checkpoint: {args.checkpoint}")
         model, start_epoch = load_model_from_checkpoint(model, args)
         args.start_epoch = start_epoch
     else:
-        args.start_epoch = 0
+        
+        args.start_epoch = 0     
+        
 
     ## Training
-    optimizer = create_optimizer(args, model)
-    lr_scheduler, _ = create_scheduler(args, optimizer)
-    print("Start training")
-
-    model_without_ddp = train_model(
-        train_loader, 
-        model, 
-        optimizer, 
-        tokenizer, 
-        lr_scheduler, 
-        args, 
-        val_loader, 
-        zeroshot_dataloader
-        )
+    if not args.evaluate:
+        print("Start training")
+        optimizer = create_optimizer(args, model)
+        lr_scheduler, _ = create_scheduler(args, optimizer)
+    
+        model_without_ddp = train_model(
+            train_loader, 
+            model, 
+            optimizer, 
+            tokenizer, 
+            lr_scheduler, 
+            args, 
+            val_loader, 
+            zeroshot_dataloader
+            )
+    else:
+        model_without_ddp = model
                
     ## Evaluation
     if args.evaluate:
+        print("Start Evaluating")
         val_result, zeroshot_results = evaluate_model(
             val_loader, 
             model_without_ddp, 
@@ -174,7 +181,7 @@ if __name__ == '__main__':
 
     # loss config
     parser.add_argument('--loss_function', 
-                        required=True, 
+                        required=False, 
                         choices=[
                             'clip', 
                             'cyclip', 
@@ -185,7 +192,8 @@ if __name__ == '__main__':
                             'isogclr_new_v1', 
                             'isogclr_new', 
                             'onlineclr'
-                            ]
+                            ],
+                            default= "isogclr_new"
                             )
     parser.add_argument('--vicreg_sim_coeff', default=25.0, type=float)
     parser.add_argument('--vicreg_std_coeff', default=25.0, type=float)
