@@ -281,23 +281,19 @@ def train_model(
 
 def load_model_from_checkpoint(model, args):
     import re
-    if args.resume_learning:
-        try:
-            checkpoint = torch.load(args.checkpoint, map_location='cpu') 
-            state_dict = checkpoint['model']             
-            model.load_state_dict(state_dict, strict=False)  
-            print('load checkpoint from %s' % args.checkpoint)
-            match = re.search(r'checkpoint_(\d+)\.pth', args.checkpoint)
-            if match:
-                start_epoch = int(match.group(1))
-            else:
-                start_epoch = 0
-                print("No checkpoint found. Starting from 0")
-        except Exception as e:
-            print(f"Failed to load checkpoint due to \n{e}")
+    try:
+        checkpoint = torch.load(args.checkpoint, map_location='cpu') 
+        state_dict = checkpoint['model']             
+        model.load_state_dict(state_dict, strict=False)  
+        print('load checkpoint from %s' % args.checkpoint)
+        match = re.search(r'checkpoint_(\d+)\.pth', args.checkpoint)
+        if match:
+            start_epoch = int(match.group(1))
+        else:
             start_epoch = 0
-            model = model
-    else:
+            print("No checkpoint found. Starting from 0")
+    except Exception as e:
+        print(f"Failed to load checkpoint due to \n{e}")
         start_epoch = 0
         model = model
     return model, start_epoch
