@@ -286,7 +286,7 @@ def load_model_from_checkpoint(model, args):
         state_dict = checkpoint['model']             
         model.load_state_dict(state_dict, strict=False)  
         print('load checkpoint from %s' % args.checkpoint)
-        match = re.search(r'checkpoint_(\d+)\.pth', args.checkpoint)
+        match = re.search(r'checkpoint_(\d+).*\.pth', args.checkpoint)
         if match:
             start_epoch = int(match.group(1))
         else:
