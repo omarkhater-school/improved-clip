@@ -26,7 +26,6 @@ The final model checkpoint can be downloaded at this link: https://drive.google.
 - **`scheduler/`**: Learning rate schedulers for warmup, cooldown, and decay.  
 - **`zeroshot_transfer/`**: Evaluation scripts for zero-shot classification.  
 - **`documentation/`**: Contains the **project report** detailing the methodology, experiments, and results.
-- **`final_model/`**: Contains the final trained model for inference. 
 
 ---
 
