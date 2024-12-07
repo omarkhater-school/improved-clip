@@ -12,6 +12,10 @@ This repository explores and optimizes global contrastive loss functions, focusi
 | SogCLR (Provided codebase)          | 14.38 (+19.8%)     | **10.73**     (+15.1%)         | 24.54       (+15.0%)         | 16.55   (+16.4%)     |
 | iSogCLR\_New (Ours)| **14.86(+23.8%)**       | 10.52(+12.8%)        | **29.37**(37.6%)          | **18.25**(+28.3%)   |
 
+---
+## Final Model Benchmark Download
+The final model checkpoint can be downloaded at this link: https://drive.google.com/file/d/1cFobjg78IdLlY0Ftk24roIRpeda0IVQO/view?usp=sharing
+
 
 ## **Repository Structure**
 
