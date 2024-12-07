@@ -1,4 +1,4 @@
-# **Optimizing Global Contrastive Loss for Multimodal Learning**
+# **Improving CLIP Training with Bayesian Optimization**
 
 This repository explores and optimizes global contrastive loss functions, focusing on enhancing image-text representation learning. The project was developed as part of the **CSCE 636 Deep Learning course (Fall 24) at Texas A&M University**.
 
