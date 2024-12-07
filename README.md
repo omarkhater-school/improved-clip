@@ -16,6 +16,15 @@ This repository explores and optimizes global contrastive loss functions, focusi
 ## Final Model Benchmark Download
 The final model checkpoint can be downloaded at this link: https://drive.google.com/file/d/1cFobjg78IdLlY0Ftk24roIRpeda0IVQO/view?usp=sharing
 
+## Data
+---
+
+We used this data in this project: 
+
+https://drive.google.com/file/d/142zQjlOw0Xw4tKzXMrQjYE6NtGRTeasT/view?usp=drive_link
+https://drive.google.com/file/d/142xxRoMaHxX3BIfCw_1b_G_dgu-02Yq3/view?usp=drive_link
+https://drive.google.com/file/d/142zQjlOw0Xw4tKzXMrQjYE6NtGRTeasT/view?usp=drive_link
+https://drive.google.com/file/d/1NXhfhwFy-nhdABACkodgYqm9pomDKE39/view?usp=sharing
 
 ## **Repository Structure**
 
