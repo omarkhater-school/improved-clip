@@ -10,7 +10,7 @@ This repository explores and optimizes global contrastive loss functions, focusi
 |--------------------|-----------------|------------------|--------------------|-------------|
 | CLIP (Benchmark)   | 12.00           | 9.32             | 21.35              | 14.22       |
 | SogCLR (Provided codebase)          | 14.38 (+19.8%)     | **10.73**     (+15.1%)         | 24.54       (+15.0%)         | 16.55   (+16.4%)     |
-| iSogCLR\_New (Ours)| **14.86(+23.8%)**       | 10.52(+12.8%)        | **29.37**(37.6%)          | **18.25**(+28.3%)   |
+| iSogCLR\_New (Ours)| **14.86(+23.8%)**       | 10.52(+12.8%)        | **29.37**(+37.6%)          | **18.25**(+28.3%)   |
 
 ---
 ## Final Model Benchmark Download
