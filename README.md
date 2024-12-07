@@ -9,8 +9,8 @@ This repository explores and optimizes global contrastive loss functions, focusi
 | **Method**        | **MSCOCO TR@1** | **MSCOCO IR@1** | **ImageNet ACC@1** | **Average** |
 |--------------------|-----------------|------------------|--------------------|-------------|
 | CLIP (Benchmark)   | 12.00           | 9.32             | 21.35              | 14.22       |
-| SogCLR (Provided codebase)          | 14.38           | 10.73            | 24.54              | 16.55       |
-| iSogCLR\_New (Ours)| **15**       | **11.52**        | **28.54**          | **18.33**   |
+| SogCLR (Provided codebase)          | 14.38 (+19.8%)     | **10.73**     (+15.1%)         | 24.54       (+15.0%)         | 16.55   (+16.4%)     |
+| iSogCLR\_New (Ours)| **14.86(+23.8%)**       | 10.52(+12.8%)        | **29.37**(37.6%)          | **18.25**(+28.3%)   |
 
 
 ## **Repository Structure**
@@ -124,7 +124,7 @@ This repository extends the original provided codebase with several enhancements
 If you use this work, please cite it as follows:
 ```
 @misc{omarkhater2024improvedclip,
-  author       = {Omar Khater},
+  author       = {Omar Khater, Michael Norman},
   title        = {Improving CLIP Training with Bayesian Optimization},
   year         = {2024},
   url          = {https://github.com/omarkhater-school/improved-clip},
