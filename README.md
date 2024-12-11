@@ -19,7 +19,7 @@ The final model checkpoint can be downloaded at this link: https://drive.google.
 ---
 ## Team Leaderboard
 
-This solution won the class competition (over 100 students) with a test objective score = `19.1594`. 
+This solution won the class competition (over 100 students) with a test objective score = `19.1594`. See the [CERTIFICATE OF RECOGNITION](documentation/1st.pdf).
 
 ### Evaluation criteria
 
